@@ -8,6 +8,7 @@
       name="description"
       content="一组为客人珍藏的藏地徒步照片回忆页，记录旅程中的风、光、服饰与同行瞬间。"
     />
+    <link rel="preload" as="image" href="web-assets/photo-01.jpg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -26,7 +27,13 @@
 
     <main id="top">
       <section class="hero" data-parallax>
-        <img class="hero-image" src="web-assets/photo-01.jpg" alt="身着藏式服饰的女性坐在水岸前" />
+        <img
+          class="hero-image"
+          src="web-assets/photo-01.jpg"
+          alt="身着藏式服饰的女性坐在水岸前"
+          fetchpriority="high"
+          decoding="async"
+        />
         <div class="hero-shade"></div>
         <div class="hero-content">
           <p class="eyebrow">Tibetan Trail Memory</p>
@@ -63,7 +70,7 @@
         </div>
         <div class="story-track">
           <article class="story-card">
-            <img src="web-assets/photo-02.jpg" alt="藏地徒步照片一" />
+            <img src="web-assets/photo-02.jpg" alt="藏地徒步照片一" loading="lazy" decoding="async" />
             <div>
               <span>出发</span>
               <h3>从第一眼进入藏地</h3>
@@ -71,7 +78,7 @@
             </div>
           </article>
           <article class="story-card">
-            <img src="web-assets/photo-03.jpg" alt="藏地徒步照片二" />
+            <img src="web-assets/photo-03.jpg" alt="藏地徒步照片二" loading="lazy" decoding="async" />
             <div>
               <span>途中</span>
               <h3>保留路上的人物瞬间</h3>
@@ -79,7 +86,7 @@
             </div>
           </article>
           <article class="story-card">
-            <img src="web-assets/photo-04.jpg" alt="藏地徒步照片三" />
+            <img src="web-assets/photo-04.jpg" alt="藏地徒步照片三" loading="lazy" decoding="async" />
             <div>
               <span>抵达</span>
               <h3>把高光时刻做成封存</h3>
@@ -99,47 +106,47 @@
         </div>
         <div class="gallery-wall">
           <figure class="gallery-tile tall">
-            <img src="web-assets/photo-05.jpg" alt="精选藏地徒步照片五" />
+            <img src="web-assets/photo-05.jpg" alt="精选藏地徒步照片五" loading="lazy" decoding="async" />
             <figcaption>Regal Silence</figcaption>
           </figure>
           <figure class="gallery-tile wide">
-            <img src="web-assets/photo-06.jpg" alt="精选藏地徒步照片六" />
+            <img src="web-assets/photo-06.jpg" alt="精选藏地徒步照片六" loading="lazy" decoding="async" />
             <figcaption>Turquoise Pulse</figcaption>
           </figure>
           <figure class="gallery-tile">
-            <img src="web-assets/photo-07.jpg" alt="精选藏地徒步照片七" />
+            <img src="web-assets/photo-07.jpg" alt="精选藏地徒步照片七" loading="lazy" decoding="async" />
             <figcaption>Gold Edge</figcaption>
           </figure>
           <figure class="gallery-tile">
-            <img src="web-assets/photo-08.jpg" alt="精选藏地徒步照片八" />
+            <img src="web-assets/photo-08.jpg" alt="精选藏地徒步照片八" loading="lazy" decoding="async" />
             <figcaption>Temple Line</figcaption>
           </figure>
           <figure class="gallery-tile tall">
-            <img src="web-assets/photo-09.jpg" alt="精选藏地徒步照片九" />
+            <img src="web-assets/photo-09.jpg" alt="精选藏地徒步照片九" loading="lazy" decoding="async" />
             <figcaption>Red Signal</figcaption>
           </figure>
           <figure class="gallery-tile">
-            <img src="web-assets/photo-10.jpg" alt="精选藏地徒步照片十" />
+            <img src="web-assets/photo-10.jpg" alt="精选藏地徒步照片十" loading="lazy" decoding="async" />
             <figcaption>Soft Power</figcaption>
           </figure>
           <figure class="gallery-tile wide">
-            <img src="web-assets/photo-11.jpg" alt="精选藏地徒步照片十一" />
+            <img src="web-assets/photo-11.jpg" alt="精选藏地徒步照片十一" loading="lazy" decoding="async" />
             <figcaption>Water Stage</figcaption>
           </figure>
           <figure class="gallery-tile">
-            <img src="web-assets/photo-12.jpg" alt="精选藏地徒步照片十二" />
+            <img src="web-assets/photo-12.jpg" alt="精选藏地徒步照片十二" loading="lazy" decoding="async" />
             <figcaption>Silver Cut</figcaption>
           </figure>
           <figure class="gallery-tile">
-            <img src="web-assets/photo-13.jpg" alt="精选藏地徒步照片十三" />
+            <img src="web-assets/photo-13.jpg" alt="精选藏地徒步照片十三" loading="lazy" decoding="async" />
             <figcaption>Urban Shrine</figcaption>
           </figure>
           <figure class="gallery-tile tall">
-            <img src="web-assets/photo-14.jpg" alt="精选藏地徒步照片十四" />
+            <img src="web-assets/photo-14.jpg" alt="精选藏地徒步照片十四" loading="lazy" decoding="async" />
             <figcaption>Blue Flame</figcaption>
           </figure>
           <figure class="gallery-tile wide">
-            <img src="web-assets/photo-15.jpg" alt="精选藏地徒步照片十五" />
+            <img src="web-assets/photo-15.jpg" alt="精选藏地徒步照片十五" loading="lazy" decoding="async" />
             <figcaption>Final Aura</figcaption>
           </figure>
         </div>
