@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>旅行纪念网页生成器</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="admin-page">
+    <main class="admin-shell">
+      <section class="admin-hero">
+        <p class="eyebrow">Memory Page Generator</p>
+        <h1>客户旅行纪念网页生成器</h1>
+        <p>
+          上传照片、视频和 GPX 轨迹，填写徒步信息，一键生成客户独立页面文件夹。
+          生成后的页面链接可以写入 NFC 芯片。
+        </p>
+      </section>
+
+      <form id="adminForm" class="admin-form">
+        <section class="admin-panel">
+          <div class="panel-head">
+            <span>01</span>
+            <h2>客户信息</h2>
+          </div>
+          <div class="form-grid">
+            <label>
+              <span>客户名称</span>
+              <input name="customerName" required placeholder="例如：库拉岗日客人 A" />
+            </label>
+            <label>
+              <span>页面标题</span>
+              <input name="title" required placeholder="例如：库拉岗日徒步回忆" />
+            </label>
+            <label class="wide">
+              <span>副标题</span>
+              <input name="subtitle" placeholder="例如：风、雪山和这一段被记住的路" />
+            </label>
+            <label>
+              <span>徒步地点</span>
+              <input name="location" placeholder="例如：西藏 山南 库拉岗日" />
+            </label>
+            <label>
+              <span>徒步日期</span>
+              <input name="date" type="date" />
+            </label>
+            <label>
+              <span>起点</span>
+              <input name="startPoint" placeholder="例如：色乡" />
+            </label>
+            <label>
+              <span>终点</span>
+              <input name="endPoint" placeholder="例如：白马林错" />
+            </label>
+            <label>
+              <span>徒步距离</span>
+              <input name="distance" placeholder="例如：12.8 km" />
+            </label>
+            <label>
+              <span>最高海拔</span>
+              <input name="maxElevation" placeholder="例如：4520 m" />
+            </label>
+            <label>
+              <span>累计爬升</span>
+              <input name="elevationGain" placeholder="例如：680 m" />
+            </label>
+            <label>
+              <span>页面风格</span>
+              <select name="style">
+                <option value="tibetan-dark">藏式高级深色</option>
+                <option value="snow-light">雪山清透浅色</option>
+                <option value="earth-gold">户外金棕纪念感</option>
+              </select>
+            </label>
+            <label>
+              <span>客户路径</span>
+              <input name="slug" placeholder="自动生成，例如 kulagangri-2026" />
+            </label>
+            <label class="wide">
+              <span>定制说明</span>
+              <textarea name="note" rows="4" placeholder="写给客人的一段纪念文字"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="admin-panel">
+          <div class="panel-head">
+            <span>02</span>
+            <h2>上传素材</h2>
+          </div>
+          <div class="upload-grid">
+            <label class="upload-box">
+              <span>照片，多张</span>
+              <input name="photos" type="file" accept="image/*" multiple required />
+            </label>
+            <label class="upload-box">
+              <span>视频，可多条</span>
+              <input name="videos" type="file" accept="video/*" multiple />
+            </label>
+            <label class="upload-box">
+              <span>GPX 轨迹文件</span>
+              <input name="gpx" type="file" accept=".gpx,application/gpx+xml" />
+            </label>
+          </div>
+        </section>
+
+        <section class="admin-actions">
+          <button class="button primary" type="submit">生成网页</button>
+          <button class="button ghost" type="button" id="downloadZip">下载客户页面 ZIP</button>
+          <button class="button ghost" type="button" id="saveFolder">保存到本地项目文件夹</button>
+        </section>
+      </form>
+
+      <section id="resultPanel" class="result-panel" hidden>
+        <p class="eyebrow">Generated</p>
+        <h2>客户页面已生成</h2>
+        <p id="resultText"></p>
+        <div class="result-actions">
+          <a id="previewLink" class="button primary" target="_blank" rel="noreferrer">预览客户页</a>
+          <button id="copyPath" class="button ghost" type="button">复制客户路径</button>
+        </div>
+        <pre id="resultFiles"></pre>
+      </section>
+    </main>
+
+    <script src="generator.js"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "customerName": "示例客户",
+  "title": "藏地徒步回忆",
+  "subtitle": "风、寺墙和这一段被记住的路",
+  "location": "西藏 拉萨",
+  "date": "2026-06-14",
+  "startPoint": "湖边起点",
+  "endPoint": "山口终点",
+  "distance": "12.8 km",
+  "maxElevation": "4520 m",
+  "elevationGain": "680 m",
+  "style": "tibetan-dark",
+  "note": "愿你再次想起这段旅程时，仍然能感到风从山口吹来。",
+  "route": "route.gpx",
+  "photos": [
+    { "src": "../../web-assets/photo-01.jpg", "alt": "示例照片 1", "cover": true },
+    { "src": "../../web-assets/photo-02.jpg", "alt": "示例照片 2" },
+    { "src": "../../web-assets/photo-03.jpg", "alt": "示例照片 3" },
+    { "src": "../../web-assets/photo-04.jpg", "alt": "示例照片 4" },
+    { "src": "../../web-assets/photo-05.jpg", "alt": "示例照片 5" },
+    { "src": "../../web-assets/photo-06.jpg", "alt": "示例照片 6" },
+    { "src": "../../web-assets/photo-07.jpg", "alt": "示例照片 7" },
+    { "src": "../../web-assets/photo-08.jpg", "alt": "示例照片 8" }
+  ],
+  "videos": []
+}
