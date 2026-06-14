@@ -626,35 +626,31 @@ function buildCustomerMarkup(data, root) {
     </section>
 
     <section class="memory-section-block">
-      <div class="section-title">
-        <p class="eyebrow">Animated Route</p>
-        <h2>从起点走到终点</h2>
-      </div>
       <div class="cute-route-shell">
-        <div id="routeMap" class="route-map"></div>
-        <div class="cute-route-overlay" aria-hidden="true">
-          <svg id="cuteRouteSvg" viewBox="0 0 1000 620" preserveAspectRatio="none">
+        <svg id="cuteRouteSvg" class="cute-route-svg" viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <pattern id="cuteMapPattern" width="90" height="60" patternUnits="userSpaceOnUse">
+              <path d="M8 44c18-18 38-18 58 0" fill="none" stroke="rgba(102,154,98,.16)" stroke-width="3" stroke-linecap="round" />
+              <path d="M66 16c10 6 18 14 24 26" fill="none" stroke="rgba(102,154,98,.12)" stroke-width="3" stroke-linecap="round" />
+            </pattern>
+          </defs>
+          <rect width="1000" height="220" rx="26" fill="#dcefb4" />
+          <rect width="1000" height="220" fill="url(#cuteMapPattern)" />
+          <path class="cute-map-river" d="M0 152 C180 112 310 188 470 138 S760 72 1000 116" />
+          <g class="cute-map-trees">
+            <path d="M122 82l16-28 16 28zM136 83v20" />
+            <path d="M812 80l16-28 16 28zM826 81v21" />
+            <path d="M612 172l14-24 14 24zM626 172v18" />
+          </g>
+          <g class="cute-route-layer">
             <path id="cuteRouteBase" class="cute-route-base" d="" />
             <path id="cuteRouteProgress" class="cute-route-progress" d="" />
-          </svg>
-          <div id="routeStartBadge" class="route-badge start-badge">起</div>
-          <div id="routeEndBadge" class="route-badge end-badge">终</div>
-          <div id="routeWalker" class="route-walker">${walkerSvg()}</div>
-          <div id="routeMountain" class="route-mountain">${mountainSvg()}</div>
-        </div>
-        <div class="route-control-panel">
-          <div class="route-status">
-            <span class="play-dot"></span>
-            <span id="routeStatusText">自动播放中...</span>
-          </div>
-          <button id="replayRoute" class="button primary" type="button">重新播放</button>
-        </div>
-      </div>
-      <div class="route-steps" aria-label="路线动画步骤">
-        <div class="is-active"><span>1</span><strong>准备出发</strong></div>
-        <div><span>2</span><strong>旅途中...</strong></div>
-        <div><span>3</span><strong>接近终点</strong></div>
-        <div><span>4</span><strong>到达终点</strong></div>
+          </g>
+        </svg>
+        <div id="routeStartBadge" class="route-badge start-badge"><i></i><span>起点</span></div>
+        <div id="routeEndBadge" class="route-badge end-badge"><span>终点</span></div>
+        <div id="routeWalker" class="route-walker">${walkerSvg()}</div>
+        <div id="routeMountain" class="route-mountain">${mountainSvg()}</div>
       </div>
     </section>
 
@@ -713,49 +709,31 @@ function buildVideoSection(data, root) {
 }
 
 async function setupRouteMap(data, root) {
-  const mapEl = document.querySelector("#routeMap");
-  if (!mapEl || !data.route) {
-    if (mapEl) mapEl.closest(".cute-route-shell").innerHTML = '<div class="map-empty">没有上传 GPX 轨迹文件</div>';
+  const shell = document.querySelector(".cute-route-shell");
+  if (!shell || !data.route) {
+    if (shell) shell.replaceWith(createRouteEmpty("没有上传 GPX 轨迹文件"));
     return;
   }
-
-  if (!window.L) {
-    mapEl.closest(".cute-route-shell").innerHTML = '<div class="map-empty">地图组件加载失败，请检查网络</div>';
-    return;
-  }
-
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  });
 
   const response = await fetch(asset(root, data.route));
   const gpx = await response.text();
   const points = parseGpx(gpx);
 
   if (points.length < 2) {
-    mapEl.closest(".cute-route-shell").innerHTML = '<div class="map-empty">GPX 轨迹点不足，无法生成动画</div>';
+    shell.replaceWith(createRouteEmpty("GPX 轨迹点不足，无法生成动画"));
     return;
   }
 
-  const latlngs = points.map((point) => [point.lat, point.lon]);
-  const map = L.map(mapEl, { scrollWheelZoom: false, zoomControl: false });
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18,
-    attribution: "&copy; OpenStreetMap",
-  }).addTo(map);
-
-  const bounds = L.latLngBounds(latlngs);
-  map.fitBounds(bounds, { padding: [28, 28] });
-  L.polyline(latlngs, { color: "#f7b955", weight: 3, opacity: 0.22, dashArray: "6 8" }).addTo(map);
   const cutePath = createCuteRoutePath(points);
   hydrateCuteRoute(cutePath);
-  const replay = document.querySelector("#replayRoute");
-  const animate = () => animateRoute(cutePath);
-  replay?.addEventListener("click", animate);
-  window.setTimeout(animate, 500);
+  window.setTimeout(() => animateRoute(cutePath), 450);
+}
+
+function createRouteEmpty(message) {
+  const element = document.createElement("div");
+  element.className = "map-empty";
+  element.textContent = message;
+  return element;
 }
 
 function hydrateCuteRoute(points) {
@@ -785,26 +763,20 @@ function hydrateCuteRoute(points) {
 function animateRoute(points) {
   const progress = document.querySelector("#cuteRouteProgress");
   const walker = document.querySelector("#routeWalker");
-  const status = document.querySelector("#routeStatusText");
-  const steps = Array.from(document.querySelectorAll(".route-steps > div"));
   if (!progress || !walker || points.length < 2) return;
 
-  const duration = 20000;
+  const duration = 8000;
   const start = performance.now();
   progress.style.strokeDasharray = "1";
   progress.style.strokeDashoffset = "1";
-  if (status) status.textContent = "自动播放中...";
 
   function frame(now) {
     const amount = Math.min((now - start) / duration, 1);
     const point = getPointAtProgress(points, amount);
-    document.querySelector("#cuteRouteProgress").style.strokeDashoffset = String(1 - amount);
+    progress.style.strokeDashoffset = String(1 - amount);
     placeRouteElement(walker, point);
-    setRouteStep(steps, amount);
     if (amount < 1) {
       requestAnimationFrame(frame);
-    } else if (status) {
-      status.textContent = "播放完成";
     }
   }
 
@@ -822,8 +794,8 @@ function createCuteRoutePath(points) {
   const lonRange = maxLon - minLon || 1;
 
   return points.map((point) => ({
-    x: 90 + ((point.lon - minLon) / lonRange) * 820,
-    y: 520 - ((point.lat - minLat) / latRange) * 430,
+    x: 110 + ((point.lon - minLon) / lonRange) * 780,
+    y: 170 - ((point.lat - minLat) / latRange) * 120,
   }));
 }
 
@@ -845,12 +817,7 @@ function getPointAtProgress(points, progress) {
 
 function placeRouteElement(element, point) {
   element.style.left = `${point.x / 10}%`;
-  element.style.top = `${point.y / 6.2}%`;
-}
-
-function setRouteStep(steps, progress) {
-  const index = Math.min(steps.length - 1, Math.floor(progress * steps.length));
-  steps.forEach((step, stepIndex) => step.classList.toggle("is-active", stepIndex === index));
+  element.style.top = `${point.y / 2.2}%`;
 }
 
 function parseGpx(gpx) {

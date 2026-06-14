@@ -345,61 +345,35 @@ select option {
 .cute-route-shell {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(248, 241, 231, 0.2);
+  height: clamp(7.5rem, 22vw, 10rem);
+  min-height: 120px;
+  max-height: 160px;
+  border: 1px solid rgba(139, 176, 104, 0.32);
   border-radius: 8px;
-  background:
-    linear-gradient(rgba(224, 245, 181, 0.42), rgba(224, 245, 181, 0.42)),
-    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.42), transparent 12rem),
-    #cfeaa5;
+  background: #dcefb4;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
-.route-map {
-  position: relative;
-  height: min(88vh, 32rem);
-  overflow: hidden;
-  background: #d8efac;
-  filter: saturate(0.78) contrast(0.86) brightness(1.08);
-  opacity: 0.34;
-}
-
-.cute-route-overlay {
-  position: absolute;
-  inset: 0 0 4.4rem;
-  pointer-events: none;
-  background-image:
-    radial-gradient(circle at 12% 22%, rgba(98, 158, 83, 0.22) 0 0.34rem, transparent 0.38rem),
-    radial-gradient(circle at 64% 20%, rgba(98, 158, 83, 0.18) 0 0.32rem, transparent 0.36rem),
-    radial-gradient(circle at 78% 72%, rgba(98, 158, 83, 0.18) 0 0.34rem, transparent 0.38rem);
-}
-
-.cute-route-overlay::before,
-.cute-route-overlay::after {
-  content: "";
-  position: absolute;
-  width: 4rem;
-  height: 5rem;
-  border-radius: 60% 60% 45% 45%;
-  background:
-    linear-gradient(#83bf75, #83bf75) 50% 82% / 0.45rem 2.4rem no-repeat,
-    radial-gradient(circle at 50% 28%, rgba(119, 177, 100, 0.36) 0 1.4rem, transparent 1.45rem);
-  opacity: 0.48;
-}
-
-.cute-route-overlay::before {
-  left: 11%;
-  top: 14%;
-}
-
-.cute-route-overlay::after {
-  right: 16%;
-  bottom: 16%;
-}
-
-#cuteRouteSvg {
+.cute-route-svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.cute-map-river {
+  fill: none;
+  stroke: rgba(117, 178, 196, 0.22);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.cute-map-trees path {
+  fill: rgba(105, 158, 88, 0.26);
+  stroke: rgba(92, 132, 78, 0.22);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .cute-route-base,
@@ -410,17 +384,17 @@ select option {
 }
 
 .cute-route-base {
-  stroke: rgba(232, 119, 44, 0.36);
-  stroke-width: 11;
-  stroke-dasharray: 16 18;
+  stroke: rgba(232, 119, 44, 0.28);
+  stroke-width: 9;
+  stroke-dasharray: 13 15;
 }
 
 .cute-route-progress {
   stroke: #f0822b;
-  stroke-width: 11;
+  stroke-width: 9;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  filter: drop-shadow(0 4px 4px rgba(80, 57, 22, 0.14));
+  filter: drop-shadow(0 2px 2px rgba(80, 57, 22, 0.12));
 }
 
 .route-walker,
@@ -432,95 +406,46 @@ select option {
 }
 
 .route-walker {
-  width: clamp(4.1rem, 9vw, 5.8rem);
+  width: clamp(2.5rem, 8vw, 3.35rem);
   transition: left 80ms linear, top 80ms linear;
 }
 
 .route-mountain {
-  width: clamp(4.8rem, 12vw, 7rem);
+  width: clamp(2.8rem, 9vw, 3.8rem);
+  transform: translate(-50%, -74%);
 }
 
 .route-badge {
-  width: 2.5rem;
-  height: 2.5rem;
-  display: grid;
-  place-items: center;
-  border: 0.25rem solid #f6fff2;
-  border-radius: 999px;
-  background: #62bd50;
-  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #31543a;
+  font-size: 0.78rem;
   font-weight: 900;
-  box-shadow: 0 0.35rem 0.8rem rgba(45, 90, 35, 0.24);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.route-badge i {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 0.18rem solid #f6fff2;
+  border-radius: 999px;
+  background: #5fbd4d;
+  box-shadow: 0 0.22rem 0.45rem rgba(45, 90, 35, 0.2);
 }
 
 .end-badge {
-  background: #e22739;
+  color: #593225;
+  transform: translate(-50%, -185%);
 }
 
-.route-control-panel {
-  min-height: 4.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  background: rgba(12, 15, 14, 0.82);
-}
-
-.route-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: var(--muted);
-}
-
-.play-dot {
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid rgba(248, 241, 231, 0.5);
-  border-radius: 999px;
-  background:
-    linear-gradient(90deg, transparent 42%, rgba(248, 241, 231, 0.8) 42% 58%, transparent 58%) center / 0.6rem 0.8rem no-repeat;
-}
-
-.route-steps {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.7rem;
-  margin-top: 0.9rem;
-}
-
-.route-steps div {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--muted);
-}
-
-.route-steps div.is-active {
-  border-color: rgba(244, 184, 76, 0.7);
-  background: rgba(244, 184, 76, 0.12);
-  color: var(--ink);
-}
-
-.route-steps span {
-  width: 1.8rem;
-  height: 1.8rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgba(244, 184, 76, 0.18);
-  color: var(--gold);
-  font-weight: 900;
+.start-badge {
+  transform: translate(-50%, -190%);
 }
 
 .map-empty {
-  min-height: 18rem;
+  min-height: 120px;
+  max-height: 160px;
   display: grid;
   place-items: center;
   border: 1px solid var(--line);
@@ -636,10 +561,6 @@ select option {
     grid-template-columns: 1fr;
   }
 
-  .route-steps {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .customer-photo-wall figure,
   .customer-photo-wall .wide,
   .customer-photo-wall figure:nth-child(3n + 1) {
@@ -665,18 +586,5 @@ select option {
 
   .customer-hero h1 {
     font-size: clamp(3rem, 18vw, 4.6rem);
-  }
-
-  .cute-route-overlay {
-    bottom: 4rem;
-  }
-
-  .route-control-panel {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .route-steps {
-    grid-template-columns: 1fr;
   }
 }
