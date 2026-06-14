@@ -156,16 +156,29 @@ https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/m
    - 定制说明
 
 6. 填写 GitHub Token。
-7. 点击：
+7. 第一次使用时，先点击：
+
+   ```text
+   连接测试
+   ```
+
+   它会自动检查：
+
+   - Token 是否有效
+   - 仓库是否存在
+   - 是否能读取当前分支
+   - 是否能通过 GitHub Contents API 写入测试文件
+
+8. 测试通过后点击：
 
    ```text
    生成并发布
    ```
 
-8. 等待上传完成。
-9. 页面会显示最终客户链接。
-10. 点击“复制链接”。
-11. 把链接写入 NFC 芯片。
+9. 等待上传完成。
+10. 页面会显示最终客户链接。
+11. 点击“复制链接”。
+12. 把链接写入 NFC 芯片。
 
 ## 自动生成的路径
 
@@ -191,9 +204,15 @@ customers/trip-20260614-a8f3c2/
 customers/客户文件夹名/index.html
 customers/客户文件夹名/data.json
 customers/客户文件夹名/route.gpx
-customers/客户文件夹名/assets/photos/photo-01.jpg
-customers/客户文件夹名/assets/photos/photo-02.jpg
-customers/客户文件夹名/assets/videos/...
+customers/客户文件夹名/photos/photo-01.jpg
+customers/客户文件夹名/photos/photo-02.jpg
+customers/客户文件夹名/videos/...
+```
+
+上传使用 GitHub Contents API：
+
+```text
+https://api.github.com/repos/{owner}/{repo}/contents/{path}
 ```
 
 照片会在浏览器里自动压缩成适合手机网页浏览的 JPEG。

@@ -4,6 +4,7 @@ const CUSTOMER_TEMPLATE = `<!doctype html>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>旅行纪念页</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" />
     <link rel="stylesheet" href="../../style.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQAtxT4vW4mID2kMNNjL3M9tnV5tF8A=" crossorigin="" />
   </head>
@@ -43,6 +44,28 @@ function setupAdmin(form) {
   const tokenInput = document.querySelector("#githubToken");
   const savedToken = window.localStorage.getItem("memoryGeneratorGithubToken");
   if (tokenInput && savedToken) tokenInput.value = savedToken;
+  restoreGitHubSettings();
+
+  document.querySelector("#testConnection")?.addEventListener("click", async () => {
+    const button = document.querySelector("#testConnection");
+    const token = tokenInput?.value.trim();
+    if (!token) {
+      alert("请先填写 GitHub Fine-grained Token。");
+      return;
+    }
+
+    persistGitHubSettings(token);
+    setPublishState(button, true, "正在测试...");
+    try {
+      const result = await testGitHubConnection(token, getGitHubConfig());
+      showTestResult(result);
+    } catch (error) {
+      console.error(error);
+      showTestResult([`失败：${error.message || error}`]);
+    } finally {
+      setPublishState(button, false, "连接测试");
+    }
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -54,16 +77,17 @@ function setupAdmin(form) {
       return;
     }
 
-    window.localStorage.setItem("memoryGeneratorGithubToken", token);
+    persistGitHubSettings(token);
     setPublishState(button, true, "正在生成素材...");
 
     try {
       state.generated = await buildCustomerPackage(form);
       setPublishState(button, true, "正在上传到 GitHub...");
-      const publishResult = await publishToGitHub(state.generated, token);
+      const publishResult = await publishToGitHub(state.generated, token, getGitHubConfig());
       showGeneratedResult(state.generated, publishResult);
       form.reset();
       if (tokenInput) tokenInput.value = token;
+      restoreGitHubSettings();
     } catch (error) {
       console.error(error);
       alert(`发布失败：${error.message || error}`);
@@ -85,13 +109,13 @@ async function buildCustomerPackage(form) {
   const compressedPhotos = await Promise.all(Array.from(photos).map(compressImageFile));
 
   const photoItems = compressedPhotos.map((file, index) => ({
-    src: `assets/photos/${file.name}`,
+    src: `photos/${file.name}`,
     alt: `${title} 照片 ${index + 1}`,
     cover: index === 0,
   }));
 
   const videoItems = Array.from(videos).map((file, index) => ({
-    src: `assets/videos/${safeFileName(file.name, `video-${index + 1}.mp4`)}`,
+    src: `videos/${safeFileName(file.name, `video-${index + 1}.mp4`)}`,
     title: `旅程视频 ${index + 1}`,
   }));
 
@@ -136,67 +160,51 @@ async function buildCustomerPackage(form) {
     data,
     files,
     slug,
-    previewUrl: `${GITHUB_CONFIG.pagesBase}/${base}/index.html`,
+    previewUrl: `${getGitHubConfig().pagesBase}/${base}/index.html`,
   };
 }
 
-async function publishToGitHub(result, token) {
-  const refPath = `repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/ref/heads/${GITHUB_CONFIG.branch}`;
-  const ref = await githubRequest(refPath, token);
-  const latestCommitSha = ref.object.sha;
-  const latestCommit = await githubRequest(
-    `repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/commits/${latestCommitSha}`,
-    token
-  );
-
-  const treeItems = [];
+async function publishToGitHub(result, token, config) {
   for (let index = 0; index < result.files.length; index += 1) {
     const file = result.files[index];
-    const content = await blobToBase64(file.blob);
-    const blob = await githubRequest(`repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/blobs`, token, {
-      method: "POST",
-      body: {
-        content,
-        encoding: "base64",
-      },
-    });
-    treeItems.push({
-      path: file.path,
-      mode: "100644",
-      type: "blob",
-      sha: blob.sha,
-    });
+    await uploadFileWithContentsApi(file, token, config, `Add ${result.slug}: ${file.path}`);
   }
 
-  const tree = await githubRequest(`repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/trees`, token, {
-    method: "POST",
-    body: {
-      base_tree: latestCommit.tree.sha,
-      tree: treeItems,
-    },
-  });
-
-  const commit = await githubRequest(`repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/commits`, token, {
-    method: "POST",
-    body: {
-      message: `Add customer page ${result.slug}`,
-      tree: tree.sha,
-      parents: [latestCommitSha],
-    },
-  });
-
-  await githubRequest(refPath, token, {
-    method: "PATCH",
-    body: {
-      sha: commit.sha,
-      force: false,
-    },
-  });
-
   return {
-    commitSha: commit.sha,
+    commitSha: "contents-api",
     url: result.previewUrl,
   };
+}
+
+async function uploadFileWithContentsApi(file, token, config, message) {
+  const content = await blobToBase64(file.blob);
+  const path = encodeGitHubPath(file.path);
+  const existingSha = await getContentSha(file.path, token, config);
+  const body = {
+    message,
+    content,
+    branch: config.branch,
+  };
+  if (existingSha) body.sha = existingSha;
+
+  return githubRequest(`repos/${config.owner}/${config.repo}/contents/${path}`, token, {
+    method: "PUT",
+    body,
+  });
+}
+
+async function getContentSha(path, token, config) {
+  const encoded = encodeGitHubPath(path);
+  try {
+    const file = await githubRequest(
+      `repos/${config.owner}/${config.repo}/contents/${encoded}?ref=${encodeURIComponent(config.branch)}`,
+      token
+    );
+    return file.sha;
+  } catch (error) {
+    if (String(error.message || "").includes("GitHub API 404")) return "";
+    throw error;
+  }
 }
 
 async function githubRequest(path, token, options = {}) {
@@ -232,7 +240,7 @@ function showGeneratedResult(result, publishResult) {
   text.textContent = `客户页面已发布：${publishResult.url}`;
   files.textContent = [
     `客户文件夹：${result.base}/`,
-    `提交版本：${publishResult.commitSha.slice(0, 7)}`,
+    `上传方式：GitHub Contents API`,
     "",
     ...result.files.map((file) => file.path),
   ].join("\n");
@@ -242,6 +250,39 @@ function showGeneratedResult(result, publishResult) {
     copy.textContent = "已复制";
     window.setTimeout(() => (copy.textContent = "复制链接"), 1400);
   };
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function testGitHubConnection(token, config) {
+  const result = [];
+  const user = await githubRequest("user", token);
+  result.push(`Token 有效：${user.login}`);
+
+  const repo = await githubRequest(`repos/${config.owner}/${config.repo}`, token);
+  result.push(`仓库存在：${repo.full_name}`);
+
+  await githubRequest(`repos/${config.owner}/${config.repo}/contents/README.md?ref=${encodeURIComponent(config.branch)}`, token);
+  result.push(`读取权限正常：${config.branch} 分支可读取`);
+
+  const testPath = `customers/_connection-test.txt`;
+  const testFile = {
+    path: testPath,
+    blob: new Blob([`connection ok ${new Date().toISOString()}\n`], { type: "text/plain" }),
+  };
+  await uploadFileWithContentsApi(testFile, token, config, "Connection test from admin page");
+  result.push(`写入权限正常：已创建/更新 ${testPath}`);
+
+  const pagesUrl = `${config.pagesBase}/customers/_connection-test.txt`;
+  result.push(`Pages 测试文件地址：${pagesUrl}`);
+  return result;
+}
+
+function showTestResult(lines) {
+  const panel = document.querySelector("#testPanel");
+  const output = document.querySelector("#testResult");
+  if (!panel || !output) return;
+  panel.hidden = false;
+  output.textContent = lines.join("\n");
   panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -455,6 +496,34 @@ function setPublishState(button, disabled, label) {
   button.textContent = label;
 }
 
+function getGitHubConfig() {
+  return {
+    owner: document.querySelector("#repoOwner")?.value.trim() || GITHUB_CONFIG.owner,
+    repo: document.querySelector("#repoName")?.value.trim() || GITHUB_CONFIG.repo,
+    branch: document.querySelector("#repoBranch")?.value.trim() || GITHUB_CONFIG.branch,
+    pagesBase: (document.querySelector("#pagesBase")?.value.trim() || GITHUB_CONFIG.pagesBase).replace(/\/$/, ""),
+  };
+}
+
+function persistGitHubSettings(token) {
+  window.localStorage.setItem("memoryGeneratorGithubToken", token);
+  window.localStorage.setItem("memoryGeneratorGithubConfig", JSON.stringify(getGitHubConfig()));
+}
+
+function restoreGitHubSettings() {
+  const raw = window.localStorage.getItem("memoryGeneratorGithubConfig");
+  if (!raw) return;
+  try {
+    const config = JSON.parse(raw);
+    if (config.owner) document.querySelector("#repoOwner").value = config.owner;
+    if (config.repo) document.querySelector("#repoName").value = config.repo;
+    if (config.branch) document.querySelector("#repoBranch").value = config.branch;
+    if (config.pagesBase) document.querySelector("#pagesBase").value = config.pagesBase;
+  } catch {
+    window.localStorage.removeItem("memoryGeneratorGithubConfig");
+  }
+}
+
 function makeTripSlug(date) {
   const rawDate = date || new Date().toISOString().slice(0, 10);
   const safeDate = rawDate.replace(/[^0-9]/g, "") || new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -507,6 +576,13 @@ async function blobToBase64(blob) {
   return btoa(binary);
 }
 
+function encodeGitHubPath(path) {
+  return path
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+}
+
 function asset(root, path) {
   if (!path) return "";
   if (/^https?:\/\//.test(path) || path.startsWith("../")) return path;
@@ -533,96 +609,3 @@ function escapeHtml(input) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
-async function writeFilesToDirectory(root, files) {
-  for (const file of files) {
-    const parts = file.path.split("/");
-    let dir = root;
-    for (const part of parts.slice(0, -1)) {
-      dir = await dir.getDirectoryHandle(part, { create: true });
-    }
-    const handle = await dir.getFileHandle(parts[parts.length - 1], { create: true });
-    const writable = await handle.createWritable();
-    await writable.write(file.blob);
-    await writable.close();
-  }
-}
-
-function downloadBlob(blob, name) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-async function createZip(files) {
-  const encoder = new TextEncoder();
-  const localParts = [];
-  const centralParts = [];
-  let offset = 0;
-
-  for (const file of files) {
-    const nameBytes = encoder.encode(file.path);
-    const data = new Uint8Array(await file.blob.arrayBuffer());
-    const crc = crc32(data);
-    const local = new Uint8Array(30 + nameBytes.length);
-    const localView = new DataView(local.buffer);
-    localView.setUint32(0, 0x04034b50, true);
-    localView.setUint16(4, 20, true);
-    localView.setUint16(6, 0, true);
-    localView.setUint16(8, 0, true);
-    localView.setUint32(14, crc, true);
-    localView.setUint32(18, data.length, true);
-    localView.setUint32(22, data.length, true);
-    localView.setUint16(26, nameBytes.length, true);
-    local.set(nameBytes, 30);
-    localParts.push(local, data);
-
-    const central = new Uint8Array(46 + nameBytes.length);
-    const centralView = new DataView(central.buffer);
-    centralView.setUint32(0, 0x02014b50, true);
-    centralView.setUint16(4, 20, true);
-    centralView.setUint16(6, 20, true);
-    centralView.setUint32(16, crc, true);
-    centralView.setUint32(20, data.length, true);
-    centralView.setUint32(24, data.length, true);
-    centralView.setUint16(28, nameBytes.length, true);
-    centralView.setUint32(42, offset, true);
-    central.set(nameBytes, 46);
-    centralParts.push(central);
-    offset += local.length + data.length;
-  }
-
-  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
-  const end = new Uint8Array(22);
-  const endView = new DataView(end.buffer);
-  endView.setUint32(0, 0x06054b50, true);
-  endView.setUint16(8, files.length, true);
-  endView.setUint16(10, files.length, true);
-  endView.setUint32(12, centralSize, true);
-  endView.setUint32(16, offset, true);
-
-  return new Blob([...localParts, ...centralParts, end], { type: "application/zip" });
-}
-
-function crc32(data) {
-  let crc = -1;
-  for (let i = 0; i < data.length; i += 1) {
-    crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ data[i]) & 0xff];
-  }
-  return (crc ^ -1) >>> 0;
-}
-
-const CRC_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let i = 0; i < 256; i += 1) {
-    let c = i;
-    for (let k = 0; k < 8; k += 1) {
-      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    }
-    table[i] = c >>> 0;
-  }
-  return table;
-})();

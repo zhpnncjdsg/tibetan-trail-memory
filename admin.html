@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>旅行纪念网页生成器</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body class="admin-page">
@@ -119,11 +120,25 @@
             </label>
             <label>
               <span>仓库 Owner</span>
-              <input value="zhpnncjdsg" disabled />
+              <input name="repoOwner" id="repoOwner" value="zhpnncjdsg" autocomplete="off" required />
             </label>
             <label>
               <span>仓库 Repo</span>
-              <input value="tibetan-trail-memory" disabled />
+              <input name="repoName" id="repoName" value="tibetan-trail-memory" autocomplete="off" required />
+            </label>
+            <label>
+              <span>分支 Branch</span>
+              <input name="repoBranch" id="repoBranch" value="main" autocomplete="off" required />
+            </label>
+            <label>
+              <span>Pages 地址</span>
+              <input
+                name="pagesBase"
+                id="pagesBase"
+                value="https://zhpnncjdsg.github.io/tibetan-trail-memory"
+                autocomplete="off"
+                required
+              />
             </label>
           </div>
           <p class="help-text">
@@ -132,9 +147,16 @@
         </section>
 
         <section class="admin-actions">
+          <button class="button ghost" type="button" id="testConnection">连接测试</button>
           <button class="button primary" type="submit" id="publishButton">生成并发布</button>
         </section>
       </form>
+
+      <section id="testPanel" class="result-panel" hidden>
+        <p class="eyebrow">Connection Test</p>
+        <h2>GitHub 连接测试结果</h2>
+        <pre id="testResult"></pre>
+      </section>
 
       <section id="resultPanel" class="result-panel" hidden>
         <p class="eyebrow">Published</p>
