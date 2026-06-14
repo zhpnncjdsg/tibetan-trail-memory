@@ -36,6 +36,11 @@ const IMAGE_MAX_WIDTH = 1920;
 const IMAGE_QUALITY = 0.8;
 const MAX_VIDEO_SIZE = 25 * 1024 * 1024;
 const MAX_GITHUB_MEDIA_FILE_SIZE = 25 * 1024 * 1024;
+const VIDEO_MAX_WIDTH = 1280;
+const VIDEO_MAX_HEIGHT = 720;
+const VIDEO_TARGET_FPS = 24;
+const VIDEO_BITRATE = 1500000;
+const AUDIO_BITRATE = 96000;
 
 document.addEventListener("DOMContentLoaded", () => {
   const adminForm = document.querySelector("#adminForm");
@@ -82,7 +87,7 @@ function setupAdmin(form) {
     setPublishState(button, true, "正在生成素材...");
 
     try {
-      state.generated = await buildCustomerPackage(form);
+      state.generated = await buildCustomerPackage(form, showProcessingProgress);
       showUploadEstimate(state.generated);
       setPublishState(button, true, "正在上传到 GitHub...");
       const publishResult = await publishToGitHub(state.generated, token, getGitHubConfig());
@@ -99,7 +104,7 @@ function setupAdmin(form) {
   });
 }
 
-async function buildCustomerPackage(form) {
+async function buildCustomerPackage(form, onProgress = () => {}) {
   const formData = new FormData(form);
   const photos = form.querySelector('[name="photos"]').files;
   const videos = form.querySelector('[name="videos"]').files;
@@ -109,18 +114,14 @@ async function buildCustomerPackage(form) {
   const slug = makeTripSlug(date);
   const base = `customers/${slug}`;
   const compressedPhotos = await Promise.all(Array.from(photos).map(compressImageFile));
-  const oversizedVideos = Array.from(videos).filter((file) => file.size > MAX_VIDEO_SIZE);
+  const compressedVideos = [];
 
-  if (oversizedVideos.length) {
-    throw new Error(
-      [
-        "视频过大，请压缩后上传。",
-        "",
-        "超过 25MB 的视频：",
-        ...oversizedVideos.map((file, index) => `${safeFileName(file.name, `video-${index + 1}.mp4`)}：${formatBytes(file.size)}`),
-      ].join("\n")
-    );
+  for (let index = 0; index < videos.length; index += 1) {
+    compressedVideos.push(await compressVideoForMobile(videos[index], index, videos.length, onProgress));
   }
+
+  const oversizedVideos = compressedVideos.filter((file) => file.blob.size > MAX_VIDEO_SIZE);
+  if (oversizedVideos.length) throw createOversizedVideoError(oversizedVideos);
 
   const oversizedPhotos = compressedPhotos.filter((file) => file.blob.size > MAX_GITHUB_MEDIA_FILE_SIZE);
   if (oversizedPhotos.length) {
@@ -141,8 +142,8 @@ async function buildCustomerPackage(form) {
     cover: index === 0,
   }));
 
-  const videoItems = Array.from(videos).map((file, index) => ({
-    src: `videos/${safeFileName(file.name, `video-${index + 1}.mp4`)}`,
+  const videoItems = compressedVideos.map((file, index) => ({
+    src: `videos/${file.name}`,
     title: `旅程视频 ${index + 1}`,
   }));
 
@@ -185,13 +186,14 @@ async function buildCustomerPackage(form) {
     });
   });
 
-  Array.from(videos).forEach((file, index) => {
+  compressedVideos.forEach((file, index) => {
     files.push({
       path: `${base}/${videoItems[index].src}`,
-      blob: file,
+      blob: file.blob,
       kind: "video",
-      originalName: file.name,
-      originalSize: file.size,
+      originalName: file.originalName,
+      originalSize: file.originalSize,
+      compressed: file.compressed,
     });
   });
 
@@ -346,6 +348,20 @@ function formatGitHubError(result) {
   return `HTTP ${result.status} ${message}${documentation}`;
 }
 
+function createOversizedVideoError(files) {
+  return new Error(
+    [
+      "视频仍然过大，请缩短视频或降低清晰度。",
+      "",
+      "压缩后仍超过 25MB 的视频：",
+      ...files.map((file) => `${file.name}：${formatBytes(file.blob.size)}，压缩前：${formatBytes(file.originalSize)}`),
+      "",
+      "备用本地压缩命令示例：",
+      'ffmpeg -i input.mp4 -vf "scale=w=\'min(1280,iw)\':h=\'min(720,ih)\':force_original_aspect_ratio=decrease,fps=24" -c:v libx264 -preset medium -b:v 1500k -maxrate 1500k -bufsize 3000k -c:a aac -b:a 96k -movflags +faststart output-mobile.mp4',
+    ].join("\n")
+  );
+}
+
 function enrichUploadError(error, file, index, total) {
   const rawMessage = error.message || String(error);
   const lines = [
@@ -364,7 +380,7 @@ function enrichUploadError(error, file, index, total) {
     lines.push("GitHub API 422：这个文件太大，GitHub Contents API 无法处理。");
     lines.push("请优先检查上面显示的具体文件。");
     if (file.kind === "photo") lines.push("照片已自动压缩；如果仍失败，建议减少照片数量。");
-    if (file.kind === "video") lines.push("视频文件不自动压缩；超过 25MB 会在发布前拦截。");
+    if (file.kind === "video") lines.push("视频已尝试自动压缩为 720p；如果仍失败，请缩短视频或降低清晰度。");
   }
 
   lines.push("");
@@ -403,6 +419,22 @@ function showUploadEstimate(result) {
     "待上传文件：",
     ...result.files.map((file) => `${file.path}  ${formatBytes(file.blob.size)}`),
   ].join("\n");
+  preview.removeAttribute("href");
+  copy.onclick = null;
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showProcessingProgress(lines) {
+  const panel = document.querySelector("#resultPanel");
+  const text = document.querySelector("#resultText");
+  const files = document.querySelector("#resultFiles");
+  const preview = document.querySelector("#previewLink");
+  const copy = document.querySelector("#copyPath");
+  if (!panel || !text || !files || !preview || !copy) return;
+
+  panel.hidden = false;
+  text.textContent = "正在处理素材...";
+  files.textContent = Array.isArray(lines) ? lines.join("\n") : String(lines || "");
   preview.removeAttribute("href");
   copy.onclick = null;
   panel.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -943,6 +975,176 @@ async function compressImageFile(file, index) {
     originalName: file.name,
     originalSize: file.size,
   };
+}
+
+async function compressVideoForMobile(file, index, total, onProgress) {
+  const name = `video-${String(index + 1).padStart(2, "0")}.mp4`;
+  const mimeType = getSupportedMp4MimeType();
+
+  onProgress([
+    `正在压缩视频 ${index + 1}/${total}`,
+    `文件：${safeFileName(file.name, name)}`,
+    `压缩前大小：${formatBytes(file.size)}`,
+    "目标：720p / MP4 / H.264 / 24fps / 1.5Mbps",
+  ]);
+
+  if (!mimeType) {
+    throw new Error(
+      [
+        "当前浏览器不支持直接压缩为 MP4/H.264。",
+        "",
+        "备用方案 1：使用支持 MP4 MediaRecorder 的新版 Safari 或 Chrome 再试一次。",
+        "备用方案 2：后续可接入 ffmpeg.wasm 做纯浏览器压缩，但首次加载会比较慢。",
+        "",
+        "备用本地压缩命令：",
+        `ffmpeg -i "${file.name}" -vf "scale=w='min(1280,iw)':h='min(720,ih)':force_original_aspect_ratio=decrease,fps=24" -c:v libx264 -preset medium -b:v 1500k -maxrate 1500k -bufsize 3000k -c:a aac -b:a 96k -movflags +faststart "${name}"`,
+      ].join("\n")
+    );
+  }
+
+  const url = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.src = url;
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "auto";
+
+  try {
+    await waitForMediaEvent(video, "loadedmetadata");
+    const size = fitVideoSize(video.videoWidth || VIDEO_MAX_WIDTH, video.videoHeight || VIDEO_MAX_HEIGHT);
+    const canvas = document.createElement("canvas");
+    canvas.width = size.width;
+    canvas.height = size.height;
+    const context = canvas.getContext("2d", { alpha: false });
+    const stream = canvas.captureStream(VIDEO_TARGET_FPS);
+    const sourceStream = getVideoCaptureStream(video);
+    if (sourceStream) {
+      sourceStream.getAudioTracks().forEach((track) => stream.addTrack(track));
+    }
+
+    const chunks = [];
+    const recorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond: VIDEO_BITRATE,
+      audioBitsPerSecond: AUDIO_BITRATE,
+    });
+
+    const finished = new Promise((resolve, reject) => {
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size) chunks.push(event.data);
+      };
+      recorder.onerror = () => reject(new Error("视频压缩失败：浏览器录制器出错"));
+      recorder.onstop = () => resolve(new Blob(chunks, { type: "video/mp4" }));
+    });
+
+    let lastProgress = -1;
+    video.addEventListener("timeupdate", () => {
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+      const progress = Math.min(99, Math.round((video.currentTime / video.duration) * 100));
+      if (progress >= lastProgress + 5) {
+        lastProgress = progress;
+        onProgress([
+          `正在压缩视频 ${index + 1}/${total}`,
+          `文件：${safeFileName(file.name, name)}`,
+          `压缩前大小：${formatBytes(file.size)}`,
+          `进度：${progress}%`,
+        ]);
+      }
+    });
+
+    recorder.start(1000);
+    video.currentTime = 0;
+    await video.play();
+    drawVideoToCanvas(video, context, size.width, size.height);
+    await waitForMediaEvent(video, "ended");
+    if (recorder.state !== "inactive") recorder.stop();
+    const blob = await finished;
+
+    stream.getTracks().forEach((track) => track.stop());
+    sourceStream?.getTracks().forEach((track) => track.stop());
+    video.removeAttribute("src");
+    video.load();
+
+    onProgress([
+      `视频压缩完成 ${index + 1}/${total}`,
+      `文件：${name}`,
+      `压缩前大小：${formatBytes(file.size)}`,
+      `压缩后大小：${formatBytes(blob.size)}`,
+      "正在准备上传...",
+    ]);
+
+    return {
+      name,
+      blob,
+      originalName: file.name,
+      originalSize: file.size,
+      compressed: true,
+    };
+  } catch (error) {
+    throw new Error(
+      [
+        `视频压缩失败：${safeFileName(file.name, name)}`,
+        `压缩前大小：${formatBytes(file.size)}`,
+        "",
+        error.message || String(error),
+        "",
+        "备用本地压缩命令：",
+        `ffmpeg -i "${file.name}" -vf "scale=w='min(1280,iw)':h='min(720,ih)':force_original_aspect_ratio=decrease,fps=24" -c:v libx264 -preset medium -b:v 1500k -maxrate 1500k -bufsize 3000k -c:a aac -b:a 96k -movflags +faststart "${name}"`,
+      ].join("\n")
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function getSupportedMp4MimeType() {
+  if (!window.MediaRecorder) return "";
+  return [
+    'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
+    'video/mp4;codecs="avc1.42001E,mp4a.40.2"',
+    "video/mp4",
+  ].find((type) => MediaRecorder.isTypeSupported(type)) || "";
+}
+
+function fitVideoSize(width, height) {
+  const scale = Math.min(1, VIDEO_MAX_WIDTH / width, VIDEO_MAX_HEIGHT / height);
+  return {
+    width: Math.max(2, Math.round((width * scale) / 2) * 2),
+    height: Math.max(2, Math.round((height * scale) / 2) * 2),
+  };
+}
+
+function getVideoCaptureStream(video) {
+  if (typeof video.captureStream === "function") return video.captureStream();
+  if (typeof video.mozCaptureStream === "function") return video.mozCaptureStream();
+  return null;
+}
+
+function drawVideoToCanvas(video, context, width, height) {
+  if (video.ended || video.paused) return;
+  context.fillStyle = "#000000";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(video, 0, 0, width, height);
+  window.requestAnimationFrame(() => drawVideoToCanvas(video, context, width, height));
+}
+
+function waitForMediaEvent(element, eventName) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      element.removeEventListener(eventName, onEvent);
+      element.removeEventListener("error", onError);
+    };
+    const onEvent = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("无法读取这个视频文件"));
+    };
+    element.addEventListener(eventName, onEvent, { once: true });
+    element.addEventListener("error", onError, { once: true });
+  });
 }
 
 function formatBytes(bytes) {
