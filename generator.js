@@ -597,13 +597,13 @@ function buildCustomerMarkup(data, root) {
   const cover = data.photos?.[0]?.src || "";
   const coverStyle = cover ? ` style="background-image:url('${asset(root, cover)}')"` : "";
   const stats = [
-    ["地点", data.location],
-    ["日期", formatDate(data.date)],
-    ["距离", data.distance],
-    ["最高海拔", data.maxElevation],
-    ["累计爬升", data.elevationGain],
-    ["路线", compactRoute(data.startPoint, data.endPoint)],
-  ].filter((item) => item[1]);
+    ["pin", "地点", data.location],
+    ["date", "日期", formatCompactDate(data.date)],
+    ["distance", "距离", data.distance],
+    ["peak", "最高海拔", data.maxElevation],
+    ["up", "累计爬升", data.elevationGain],
+    ["route", "路线", compactRoute(data.startPoint, data.endPoint)],
+  ].filter((item) => item[2]);
 
   return `
     <section class="customer-hero"${coverStyle}>
@@ -615,17 +615,11 @@ function buildCustomerMarkup(data, root) {
       </div>
     </section>
 
-    <section class="memory-section-block">
-      <div class="section-title">
-        <p class="eyebrow">Trail Data</p>
-        <h2>这段路的坐标</h2>
+    <section class="memory-section-block journey-overview">
+      <div class="section-title compact-title">
+        <p class="eyebrow">Trail Memory</p>
+        <h2>旅程轨迹</h2>
       </div>
-      <div class="stat-grid">
-        ${stats.map(([label, val]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(val)}</strong></div>`).join("")}
-      </div>
-    </section>
-
-    <section class="memory-section-block">
       <div class="cute-route-shell">
         <svg id="cuteRouteSvg" class="cute-route-svg" viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true">
           <defs>
@@ -651,6 +645,20 @@ function buildCustomerMarkup(data, root) {
         <div id="routeEndBadge" class="route-badge end-badge"><span>终点</span></div>
         <div id="routeWalker" class="route-walker">${walkerSvg()}</div>
         <div id="routeMountain" class="route-mountain">${mountainSvg()}</div>
+      </div>
+      <p id="routeCompleteText" class="route-complete">旅程完成</p>
+      <div class="stat-grid compact-stat-grid">
+        ${stats
+          .map(
+            ([icon, label, val]) => `
+              <div>
+                <span class="stat-icon">${statIcon(icon)}</span>
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(val)}</strong>
+              </div>
+            `
+          )
+          .join("")}
       </div>
     </section>
 
@@ -765,18 +773,20 @@ function animateRoute(points) {
   const walker = document.querySelector("#routeWalker");
   if (!progress || !walker || points.length < 2) return;
 
-  const duration = 8000;
+  const duration = 1200;
   const start = performance.now();
   progress.style.strokeDasharray = "1";
   progress.style.strokeDashoffset = "1";
 
   function frame(now) {
-    const amount = Math.min((now - start) / duration, 1);
+    const amount = Math.max(0, Math.min((now - start) / duration, 1));
     const point = getPointAtProgress(points, amount);
     progress.style.strokeDashoffset = String(1 - amount);
     placeRouteElement(walker, point);
     if (amount < 1) {
       requestAnimationFrame(frame);
+    } else {
+      document.querySelector("#routeCompleteText")?.classList.add("is-visible");
     }
   }
 
@@ -1151,11 +1161,33 @@ function compactRoute(start, end) {
   return start || end || "";
 }
 
+function formatCompactDate(date) {
+  if (!date) return "";
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}.${month}.${day}`;
+}
+
 function formatDate(date) {
   if (!date) return "";
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
   return parsed.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function statIcon(type) {
+  const icons = {
+    pin: "⌖",
+    date: "◷",
+    distance: "↔",
+    peak: "△",
+    up: "↟",
+    route: "→",
+  };
+  return icons[type] || "•";
 }
 
 function escapeHtml(input) {
