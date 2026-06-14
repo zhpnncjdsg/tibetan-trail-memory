@@ -111,6 +111,7 @@ async function buildCustomerPackage(form, onProgress = () => {}) {
   const gpx = form.querySelector('[name="gpx"]').files[0];
   const title = value(formData, "title") || "藏地徒步回忆";
   const date = value(formData, "date");
+  const theme = value(formData, "style") || "tibetan-dark";
   const slug = makeTripSlug(date);
   const base = `customers/${slug}`;
   const compressedPhotos = await Promise.all(Array.from(photos).map(compressImageFile));
@@ -158,7 +159,8 @@ async function buildCustomerPackage(form, onProgress = () => {}) {
     distance: value(formData, "distance"),
     maxElevation: value(formData, "maxElevation"),
     elevationGain: value(formData, "elevationGain"),
-    style: value(formData, "style") || "tibetan-dark",
+    theme,
+    style: theme,
     note: value(formData, "note"),
     route: gpx ? "route.gpx" : "",
     photos: photoItems,
@@ -579,7 +581,7 @@ async function renderCustomerPage(app) {
     if (!response.ok) throw new Error("data.json not found");
     const data = await response.json();
     document.title = data.title || "旅行纪念页";
-    app.classList.add(`theme-${data.style || "tibetan-dark"}`);
+    app.classList.add(`theme-${data.theme || data.style || "tibetan-dark"}`);
     app.innerHTML = buildCustomerMarkup(data, root);
     await setupRouteMap(data, root);
   } catch (error) {
@@ -628,8 +630,8 @@ function buildCustomerMarkup(data, root) {
               <path d="M66 16c10 6 18 14 24 26" fill="none" stroke="rgba(102,154,98,.12)" stroke-width="3" stroke-linecap="round" />
             </pattern>
           </defs>
-          <rect width="1000" height="220" rx="26" fill="#dcefb4" />
-          <rect width="1000" height="220" fill="url(#cuteMapPattern)" />
+          <rect class="cute-map-base" width="1000" height="220" rx="26" />
+          <rect class="cute-map-pattern-fill" width="1000" height="220" fill="url(#cuteMapPattern)" />
           <path class="cute-map-river" d="M0 152 C180 112 310 188 470 138 S760 72 1000 116" />
           <g class="cute-map-trees">
             <path d="M122 82l16-28 16 28zM136 83v20" />
@@ -773,12 +775,19 @@ function animateRoute(points) {
   const walker = document.querySelector("#routeWalker");
   if (!progress || !walker || points.length < 2) return;
 
-  const duration = 1200;
-  const start = performance.now();
-  progress.style.strokeDasharray = "1";
-  progress.style.strokeDashoffset = "1";
+  const complete = document.querySelector("#routeCompleteText");
+  const duration = 4800;
+  const hold = 900;
 
-  function frame(now) {
+  function play() {
+    const start = performance.now();
+    progress.style.strokeDasharray = "1";
+    progress.style.strokeDashoffset = "1";
+    complete?.classList.remove("is-visible");
+    placeRouteElement(walker, points[0]);
+    requestAnimationFrame(frame);
+
+    function frame(now) {
     const amount = Math.max(0, Math.min((now - start) / duration, 1));
     const point = getPointAtProgress(points, amount);
     progress.style.strokeDashoffset = String(1 - amount);
@@ -786,11 +795,13 @@ function animateRoute(points) {
     if (amount < 1) {
       requestAnimationFrame(frame);
     } else {
-      document.querySelector("#routeCompleteText")?.classList.add("is-visible");
+      complete?.classList.add("is-visible");
+      window.setTimeout(play, hold);
+    }
     }
   }
 
-  requestAnimationFrame(frame);
+  play();
 }
 
 function createCuteRoutePath(points) {
@@ -841,19 +852,25 @@ function parseGpx(gpx) {
 
 function walkerSvg() {
   return `
-    <svg viewBox="0 0 96 120" role="img" aria-label="徒步小人">
-      <ellipse cx="48" cy="110" rx="24" ry="7" fill="rgba(0,0,0,.18)" />
-      <path d="M32 49h33l7 35H25z" fill="#2e6f72" stroke="#3b251c" stroke-width="4" />
-      <path d="M35 84 24 106M60 84l13 22" stroke="#3b251c" stroke-width="8" stroke-linecap="round" />
-      <path d="M30 56 18 72M66 56l14 13" stroke="#3b251c" stroke-width="7" stroke-linecap="round" />
-      <circle cx="49" cy="35" r="18" fill="#ffd29b" stroke="#3b251c" stroke-width="4" />
-      <path d="M25 30c8-21 41-23 51 0-15 6-33 7-51 0z" fill="#d98f37" stroke="#3b251c" stroke-width="4" />
-      <path d="M22 29h54" stroke="#3b251c" stroke-width="5" stroke-linecap="round" />
-      <circle cx="43" cy="36" r="2.5" fill="#3b251c" />
-      <circle cx="55" cy="36" r="2.5" fill="#3b251c" />
-      <path d="M43 45c5 4 11 4 16 0" fill="none" stroke="#3b251c" stroke-width="3" stroke-linecap="round" />
-      <path d="M67 48c10 4 15 13 13 25l-13-5z" fill="#8a5b35" stroke="#3b251c" stroke-width="4" />
-      <path d="M36 50h25v12H36z" fill="#f4b84c" opacity=".9" />
+    <svg viewBox="0 0 104 128" role="img" aria-label="专业徒步者">
+      <ellipse cx="53" cy="116" rx="29" ry="7" fill="rgba(0,0,0,.2)" />
+      <path d="M80 57c12 8 16 25 11 43" fill="none" stroke="#31241c" stroke-width="4" stroke-linecap="round" />
+      <path d="M72 52c12 5 18 15 17 30l-17-4z" fill="#4f5f48" stroke="#2b211b" stroke-width="4" />
+      <path d="M35 53h32l7 39H27z" fill="#255b60" stroke="#2b211b" stroke-width="4" stroke-linejoin="round" />
+      <path d="M37 57h29l-4 18H41z" fill="#ef7f32" opacity=".95" />
+      <path d="M39 89 26 113M63 90l16 22" stroke="#2b211b" stroke-width="8" stroke-linecap="round" />
+      <path d="M27 113h18M70 112h19" stroke="#111" stroke-width="6" stroke-linecap="round" />
+      <path d="M35 59 20 75M68 59l18 12" stroke="#2b211b" stroke-width="7" stroke-linecap="round" />
+      <path d="M86 69 92 110" stroke="#4a3424" stroke-width="4" stroke-linecap="round" />
+      <circle cx="52" cy="36" r="17" fill="#dca46e" stroke="#2b211b" stroke-width="4" />
+      <path d="M28 33c8-18 40-21 53 0-17 6-35 6-53 0z" fill="#263642" stroke="#2b211b" stroke-width="4" />
+      <path d="M28 32h52" stroke="#0f1a20" stroke-width="6" stroke-linecap="round" />
+      <path d="M38 24c11-9 27-9 39 2" fill="none" stroke="#ef7f32" stroke-width="5" stroke-linecap="round" />
+      <circle cx="47" cy="37" r="2.3" fill="#1e1713" />
+      <circle cx="58" cy="37" r="2.3" fill="#1e1713" />
+      <path d="M47 47c5 3 10 3 15 0" fill="none" stroke="#1e1713" stroke-width="3" stroke-linecap="round" />
+      <path d="M31 51h9v28h-9z" fill="#f0c15c" stroke="#2b211b" stroke-width="3" />
+      <path d="M50 53v33" stroke="#f6d784" stroke-width="3" stroke-linecap="round" opacity=".65" />
     </svg>
   `;
 }

@@ -8,6 +8,25 @@
   --gold: #f4b84c;
   --cyan: #16d6e6;
   --moss: #173f37;
+  --theme-bg:
+    radial-gradient(circle at 12% 6%, rgba(22, 214, 230, 0.14), transparent 28rem),
+    radial-gradient(circle at 84% 14%, rgba(226, 39, 57, 0.18), transparent 30rem),
+    linear-gradient(135deg, #070808, #130e0d 48%, #071311);
+  --hero-shade:
+    linear-gradient(90deg, rgba(5, 6, 6, 0.72), rgba(5, 6, 6, 0.2), rgba(5, 6, 6, 0.65)),
+    linear-gradient(0deg, #090b0c 0%, transparent 44%);
+  --title-glow: rgba(226, 39, 57, 0.42);
+  --route-card-bg: #dcefb4;
+  --route-card-pattern: rgba(102, 154, 98, 0.16);
+  --route-card-river: rgba(117, 178, 196, 0.22);
+  --route-card-tree: rgba(105, 158, 88, 0.26);
+  --route-line: #f0822b;
+  --route-line-soft: rgba(232, 119, 44, 0.28);
+  --route-start: #5fbd4d;
+  --route-label: #31543a;
+  --stat-panel: rgba(5, 8, 8, 0.58);
+  --photo-border: rgba(248, 241, 231, 0.16);
+  --endpoint-filter: none;
   color-scheme: dark;
 }
 
@@ -30,6 +49,10 @@ body {
   font-family:
     "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui,
     sans-serif;
+}
+
+.customer-page {
+  background: var(--theme-bg);
 }
 
 img,
@@ -271,9 +294,7 @@ select option {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background:
-    linear-gradient(90deg, rgba(5, 6, 6, 0.72), rgba(5, 6, 6, 0.2), rgba(5, 6, 6, 0.65)),
-    linear-gradient(0deg, #090b0c 0%, transparent 44%);
+  background: var(--hero-shade);
 }
 
 .customer-hero-content {
@@ -284,7 +305,7 @@ select option {
   max-width: 12ch;
   margin-bottom: 1rem;
   font-size: clamp(3.4rem, 12vw, 8rem);
-  text-shadow: 0 0 34px rgba(226, 39, 57, 0.42);
+  text-shadow: 0 0 34px var(--title-glow);
 }
 
 .customer-hero p:last-child {
@@ -322,7 +343,20 @@ select option {
 }
 
 .compact-title h2 {
+  position: relative;
+  display: inline-block;
   font-size: clamp(1.45rem, 4.6vw, 2.3rem);
+}
+
+.compact-title h2::after {
+  content: "";
+  position: absolute;
+  left: 0.08em;
+  right: -1.2em;
+  bottom: -0.32rem;
+  height: 0.18rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold), transparent);
 }
 
 .compact-title .eyebrow {
@@ -367,8 +401,8 @@ select option {
   border: 1px solid rgba(248, 241, 231, 0.12);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(226, 39, 57, 0.08), transparent 55%),
-    rgba(5, 8, 8, 0.58);
+    linear-gradient(135deg, color-mix(in srgb, var(--red), transparent 88%), transparent 55%),
+    var(--stat-panel);
   backdrop-filter: blur(10px);
 }
 
@@ -403,7 +437,7 @@ select option {
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
-  background: rgba(244, 184, 76, 0.13);
+  background: color-mix(in srgb, var(--gold), transparent 86%);
   color: var(--gold);
   font-size: 0.82rem;
   line-height: 1;
@@ -420,7 +454,7 @@ select option {
   min-width: 0;
   overflow-wrap: anywhere;
   margin: 0;
-  color: #f4b84c;
+  color: var(--gold);
   font-size: clamp(0.88rem, 2.7vw, 1.15rem);
   line-height: 1.15;
 }
@@ -431,9 +465,9 @@ select option {
   height: clamp(7.5rem, 22vw, 9.5rem);
   min-height: 120px;
   max-height: 160px;
-  border: 1px solid rgba(139, 176, 104, 0.32);
+  border: 1px solid color-mix(in srgb, var(--route-line), transparent 64%);
   border-radius: 8px;
-  background: #dcefb4;
+  background: var(--route-card-bg);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
@@ -444,16 +478,24 @@ select option {
   height: 100%;
 }
 
+.cute-map-base {
+  fill: var(--route-card-bg);
+}
+
+.cute-map-pattern-fill {
+  opacity: 0.92;
+}
+
 .cute-map-river {
   fill: none;
-  stroke: rgba(117, 178, 196, 0.22);
+  stroke: var(--route-card-river);
   stroke-width: 5;
   stroke-linecap: round;
 }
 
 .cute-map-trees path {
-  fill: rgba(105, 158, 88, 0.26);
-  stroke: rgba(92, 132, 78, 0.22);
+  fill: var(--route-card-tree);
+  stroke: color-mix(in srgb, var(--route-label), transparent 78%);
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -467,13 +509,13 @@ select option {
 }
 
 .cute-route-base {
-  stroke: rgba(232, 119, 44, 0.28);
+  stroke: var(--route-line-soft);
   stroke-width: 9;
   stroke-dasharray: 13 15;
 }
 
 .cute-route-progress {
-  stroke: #f0822b;
+  stroke: var(--route-line);
   stroke-width: 9;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
@@ -496,13 +538,14 @@ select option {
 .route-mountain {
   width: clamp(2.8rem, 9vw, 3.8rem);
   transform: translate(-50%, -74%);
+  filter: var(--endpoint-filter);
 }
 
 .route-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  color: #31543a;
+  color: var(--route-label);
   font-size: 0.78rem;
   font-weight: 900;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -513,12 +556,12 @@ select option {
   height: 0.85rem;
   border: 0.18rem solid #f6fff2;
   border-radius: 999px;
-  background: #5fbd4d;
+  background: var(--route-start);
   box-shadow: 0 0.22rem 0.45rem rgba(45, 90, 35, 0.2);
 }
 
 .end-badge {
-  color: #593225;
+  color: var(--route-label);
   transform: translate(-50%, -185%);
 }
 
@@ -564,7 +607,7 @@ select option {
   min-height: 0;
   overflow: hidden;
   margin: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--photo-border);
   border-radius: 8px;
   background: var(--panel);
 }
@@ -630,19 +673,193 @@ select option {
   text-align: center;
 }
 
-.theme-snow-light {
-  --ink: #fffaf2;
-  --muted: rgba(255, 250, 242, 0.76);
-  --red: #d94b4e;
-  --gold: #f1c66a;
-  --cyan: #9be8f0;
+.theme-tibetan-dark {
+  --red: #e22739;
+  --gold: #f4b84c;
+  --cyan: #16d6e6;
+  --theme-bg:
+    radial-gradient(circle at 12% 6%, rgba(22, 214, 230, 0.14), transparent 28rem),
+    radial-gradient(circle at 84% 14%, rgba(226, 39, 57, 0.18), transparent 30rem),
+    linear-gradient(135deg, #070808, #130e0d 48%, #071311);
+  --route-card-bg: #dcefb4;
+  --route-line: #f0822b;
+  --route-line-soft: rgba(232, 119, 44, 0.28);
+  --route-start: #5fbd4d;
+  --route-label: #31543a;
+  --photo-border: rgba(244, 184, 76, 0.24);
 }
 
+.theme-snow-mountain,
+.theme-snow-light {
+  --red: #4c8fc8;
+  --gold: #9fd6ff;
+  --cyan: #d8f4ff;
+  --title-glow: rgba(136, 210, 255, 0.45);
+  --theme-bg:
+    radial-gradient(circle at 20% 0%, rgba(218, 246, 255, 0.18), transparent 26rem),
+    linear-gradient(145deg, #07111b, #102639 52%, #08121d);
+  --hero-shade:
+    linear-gradient(90deg, rgba(5, 15, 24, 0.72), rgba(5, 15, 24, 0.16), rgba(5, 15, 24, 0.62)),
+    linear-gradient(0deg, #07111b 0%, transparent 46%);
+  --route-card-bg: #dff4fb;
+  --route-card-river: rgba(84, 161, 210, 0.22);
+  --route-card-tree: rgba(126, 170, 186, 0.23);
+  --route-line: #2e9bdb;
+  --route-line-soft: rgba(46, 155, 219, 0.28);
+  --route-start: #40b8d5;
+  --route-label: #24536b;
+  --stat-panel: rgba(7, 22, 34, 0.66);
+  --photo-border: rgba(159, 214, 255, 0.28);
+  --endpoint-filter: hue-rotate(28deg) saturate(0.72) brightness(1.12);
+}
+
+.theme-desert,
 .theme-earth-gold {
-  --red: #c73e2f;
-  --gold: #d9a84f;
-  --cyan: #8ddbd0;
-  --moss: #243f32;
+  --red: #b85a2a;
+  --gold: #f2b75b;
+  --cyan: #ffd38a;
+  --title-glow: rgba(242, 183, 91, 0.42);
+  --theme-bg:
+    radial-gradient(circle at 82% 10%, rgba(242, 183, 91, 0.16), transparent 28rem),
+    linear-gradient(145deg, #130c08, #2b1b0f 54%, #0f0c09);
+  --route-card-bg: #efd08a;
+  --route-card-river: rgba(165, 109, 54, 0.16);
+  --route-card-tree: rgba(156, 116, 61, 0.22);
+  --route-line: #df6d23;
+  --route-line-soft: rgba(223, 109, 35, 0.3);
+  --route-start: #c58b38;
+  --route-label: #684018;
+  --stat-panel: rgba(31, 18, 9, 0.66);
+  --photo-border: rgba(242, 183, 91, 0.3);
+  --endpoint-filter: sepia(0.45) saturate(1.25) hue-rotate(336deg);
+}
+
+.theme-grassland {
+  --red: #4e9c58;
+  --gold: #cce46b;
+  --cyan: #95e7bd;
+  --title-glow: rgba(124, 210, 100, 0.4);
+  --theme-bg:
+    radial-gradient(circle at 16% 8%, rgba(149, 231, 189, 0.13), transparent 26rem),
+    linear-gradient(145deg, #07110b, #16331d 56%, #0c160d);
+  --route-card-bg: #cfeaa2;
+  --route-card-river: rgba(116, 173, 122, 0.18);
+  --route-card-tree: rgba(74, 150, 69, 0.28);
+  --route-line: #eb8b2e;
+  --route-start: #43b955;
+  --route-label: #295b2d;
+  --stat-panel: rgba(7, 20, 10, 0.66);
+  --photo-border: rgba(204, 228, 107, 0.26);
+}
+
+.theme-forest {
+  --red: #517c42;
+  --gold: #d2b56a;
+  --cyan: #8ecfaf;
+  --title-glow: rgba(119, 185, 103, 0.38);
+  --theme-bg:
+    radial-gradient(circle at 18% 0%, rgba(142, 207, 175, 0.12), transparent 24rem),
+    linear-gradient(145deg, #050b08, #0e2116 52%, #07110d);
+  --route-card-bg: #b8d69e;
+  --route-card-tree: rgba(30, 96, 54, 0.34);
+  --route-card-river: rgba(82, 132, 102, 0.2);
+  --route-line: #e29437;
+  --route-start: #55a35b;
+  --route-label: #193f28;
+  --stat-panel: rgba(4, 17, 10, 0.7);
+  --photo-border: rgba(142, 207, 175, 0.26);
+  --endpoint-filter: hue-rotate(36deg) saturate(0.78);
+}
+
+.theme-plateau {
+  --red: #d83245;
+  --gold: #f1c852;
+  --cyan: #7dd8e6;
+  --title-glow: rgba(241, 200, 82, 0.36);
+  --theme-bg:
+    radial-gradient(circle at 40% 0%, rgba(125, 216, 230, 0.16), transparent 30rem),
+    linear-gradient(145deg, #081019, #172a2c 48%, #120f16);
+  --route-card-bg: #d6e5b0;
+  --route-card-river: rgba(99, 152, 187, 0.2);
+  --route-card-tree: rgba(131, 138, 88, 0.24);
+  --route-line: #ef7b2e;
+  --route-start: #62b766;
+  --route-label: #35473b;
+  --stat-panel: rgba(10, 19, 24, 0.68);
+  --photo-border: rgba(241, 200, 82, 0.27);
+}
+
+.theme-island {
+  --red: #e36f4d;
+  --gold: #ffd166;
+  --cyan: #5de0d2;
+  --title-glow: rgba(93, 224, 210, 0.42);
+  --theme-bg:
+    radial-gradient(circle at 18% 0%, rgba(93, 224, 210, 0.18), transparent 28rem),
+    linear-gradient(145deg, #06131b, #0b3a43 54%, #07121a);
+  --route-card-bg: #c9f0d9;
+  --route-card-river: rgba(32, 165, 184, 0.22);
+  --route-card-tree: rgba(42, 151, 108, 0.25);
+  --route-line: #f08a32;
+  --route-start: #36c6a3;
+  --route-label: #185c62;
+  --stat-panel: rgba(4, 27, 33, 0.66);
+  --photo-border: rgba(93, 224, 210, 0.28);
+}
+
+.theme-city-travel {
+  --red: #f05b6a;
+  --gold: #f5b84b;
+  --cyan: #68b8ff;
+  --title-glow: rgba(104, 184, 255, 0.38);
+  --theme-bg:
+    radial-gradient(circle at 85% 8%, rgba(240, 91, 106, 0.15), transparent 28rem),
+    linear-gradient(145deg, #080b11, #171b26 54%, #0b0d13);
+  --route-card-bg: #d7e3e6;
+  --route-card-river: rgba(104, 184, 255, 0.18);
+  --route-card-tree: rgba(99, 116, 128, 0.24);
+  --route-line: #ff8a2d;
+  --route-start: #4aa3ff;
+  --route-label: #26394d;
+  --stat-panel: rgba(9, 12, 18, 0.68);
+  --photo-border: rgba(104, 184, 255, 0.26);
+}
+
+.theme-black-gold {
+  --red: #ba8b36;
+  --gold: #f5c96b;
+  --cyan: #d8c188;
+  --title-glow: rgba(245, 201, 107, 0.42);
+  --theme-bg:
+    radial-gradient(circle at 80% 0%, rgba(245, 201, 107, 0.11), transparent 24rem),
+    linear-gradient(145deg, #030303, #10100d 56%, #050505);
+  --route-card-bg: #d8d1b1;
+  --route-card-river: rgba(120, 109, 80, 0.18);
+  --route-card-tree: rgba(107, 95, 56, 0.22);
+  --route-line: #d7a33e;
+  --route-start: #b78a33;
+  --route-label: #383019;
+  --stat-panel: rgba(0, 0, 0, 0.72);
+  --photo-border: rgba(245, 201, 107, 0.34);
+  --endpoint-filter: sepia(0.55) saturate(0.88);
+}
+
+.theme-q-outdoor {
+  --red: #ee6f3b;
+  --gold: #ffbf4d;
+  --cyan: #57d9c4;
+  --title-glow: rgba(255, 191, 77, 0.4);
+  --theme-bg:
+    radial-gradient(circle at 15% 5%, rgba(87, 217, 196, 0.13), transparent 25rem),
+    linear-gradient(145deg, #07100e, #14251b 54%, #0e1110);
+  --route-card-bg: #d9efaa;
+  --route-card-river: rgba(87, 173, 194, 0.2);
+  --route-card-tree: rgba(99, 180, 80, 0.3);
+  --route-line: #f58225;
+  --route-start: #64bf4d;
+  --route-label: #2c5631;
+  --stat-panel: rgba(7, 18, 13, 0.64);
+  --photo-border: rgba(255, 191, 77, 0.28);
 }
 
 @media (max-width: 820px) {
