@@ -623,32 +623,8 @@ function buildCustomerMarkup(data, root) {
         <h2>旅程轨迹</h2>
       </div>
       <div class="cute-route-shell">
-        <svg id="cuteRouteSvg" class="cute-route-svg" viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <pattern id="cuteMapPattern" width="90" height="60" patternUnits="userSpaceOnUse">
-              <path d="M8 44c18-18 38-18 58 0" fill="none" stroke="rgba(102,154,98,.16)" stroke-width="3" stroke-linecap="round" />
-              <path d="M66 16c10 6 18 14 24 26" fill="none" stroke="rgba(102,154,98,.12)" stroke-width="3" stroke-linecap="round" />
-            </pattern>
-          </defs>
-          <rect class="cute-map-base" width="1000" height="220" rx="26" />
-          <rect class="cute-map-pattern-fill" width="1000" height="220" fill="url(#cuteMapPattern)" />
-          <path class="cute-map-river" d="M0 152 C180 112 310 188 470 138 S760 72 1000 116" />
-          <g class="cute-map-trees">
-            <path d="M122 82l16-28 16 28zM136 83v20" />
-            <path d="M812 80l16-28 16 28zM826 81v21" />
-            <path d="M612 172l14-24 14 24zM626 172v18" />
-          </g>
-          <g class="cute-route-layer">
-            <path id="cuteRouteBase" class="cute-route-base" d="" />
-            <path id="cuteRouteProgress" class="cute-route-progress" d="" />
-          </g>
-        </svg>
-        <div id="routeStartBadge" class="route-badge start-badge"><i></i><span>起点</span></div>
-        <div id="routeEndBadge" class="route-badge end-badge"><span>终点</span></div>
-        <div id="routeWalker" class="route-walker">${walkerSvg()}</div>
-        <div id="routeMountain" class="route-mountain">${mountainSvg()}</div>
+        <div id="routeMap" class="route-map"></div>
       </div>
-      <p id="routeCompleteText" class="route-complete">旅程完成</p>
       <div class="stat-grid compact-stat-grid">
         ${stats
           .map(
@@ -720,8 +696,14 @@ function buildVideoSection(data, root) {
 
 async function setupRouteMap(data, root) {
   const shell = document.querySelector(".cute-route-shell");
+  const mapEl = document.querySelector("#routeMap");
   if (!shell || !data.route) {
     if (shell) shell.replaceWith(createRouteEmpty("没有上传 GPX 轨迹文件"));
+    return;
+  }
+
+  if (!mapEl || !window.L) {
+    shell.replaceWith(createRouteEmpty("地图组件加载失败，请检查网络"));
     return;
   }
 
@@ -734,9 +716,8 @@ async function setupRouteMap(data, root) {
     return;
   }
 
-  const cutePath = createCuteRoutePath(points);
-  hydrateCuteRoute(cutePath);
-  window.setTimeout(() => animateRoute(cutePath), 450);
+  const latlngs = points.map((point) => [point.lat, point.lon]);
+  hydrateLeafletRouteMap(mapEl, latlngs);
 }
 
 function createRouteEmpty(message) {
@@ -744,6 +725,116 @@ function createRouteEmpty(message) {
   element.className = "map-empty";
   element.textContent = message;
   return element;
+}
+
+function hydrateLeafletRouteMap(mapEl, latlngs) {
+  const map = L.map(mapEl, {
+    attributionControl: true,
+    boxZoom: false,
+    doubleClickZoom: false,
+    dragging: false,
+    keyboard: false,
+    scrollWheelZoom: false,
+    tap: false,
+    touchZoom: false,
+    zoomControl: false,
+  });
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    attribution: "&copy; OpenStreetMap &copy; CARTO",
+    maxZoom: 18,
+    subdomains: "abcd",
+  }).addTo(map);
+
+  const bounds = L.latLngBounds(latlngs);
+  map.fitBounds(bounds, { padding: [28, 28], animate: false });
+
+  L.polyline(latlngs, {
+    color: "#c7cdd2",
+    opacity: 0.9,
+    weight: 4,
+    lineCap: "round",
+    lineJoin: "round",
+  }).addTo(map);
+
+  const activeLine = L.polyline([], {
+    color: "#d63b25",
+    opacity: 1,
+    weight: 4,
+    lineCap: "round",
+    lineJoin: "round",
+  }).addTo(map);
+
+  const runner = L.circleMarker(latlngs[0], {
+    radius: 5,
+    color: "#ffffff",
+    weight: 2,
+    fillColor: "#d63b25",
+    fillOpacity: 1,
+    interactive: false,
+  }).addTo(map);
+
+  L.marker(latlngs[0], {
+    icon: routeMarkerIcon("起", "start"),
+    interactive: false,
+  }).addTo(map);
+  L.marker(latlngs[latlngs.length - 1], {
+    icon: routeMarkerIcon("终", "end"),
+    interactive: false,
+  }).addTo(map);
+
+  window.setTimeout(() => {
+    map.invalidateSize(false);
+    map.fitBounds(bounds, { padding: [28, 28], animate: false });
+    animateLeafletRoute(latlngs, activeLine, runner);
+  }, 250);
+}
+
+function routeMarkerIcon(label, type) {
+  return L.divIcon({
+    className: `real-route-marker ${type}`,
+    html: `<span>${label}</span>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+}
+
+function animateLeafletRoute(latlngs, line, runner) {
+  const duration = 6500;
+  const hold = 1100;
+
+  function play() {
+    const start = performance.now();
+    line.setLatLngs([latlngs[0]]);
+    runner.setLatLng(latlngs[0]);
+
+    function frame(now) {
+      const amount = Math.max(0, Math.min((now - start) / duration, 1));
+      const visible = getLatLngsAtProgress(latlngs, amount);
+      line.setLatLngs(visible);
+      runner.setLatLng(visible[visible.length - 1]);
+      if (amount < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        window.setTimeout(play, hold);
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  play();
+}
+
+function getLatLngsAtProgress(latlngs, progress) {
+  const index = Math.min(latlngs.length - 1, Math.floor(progress * (latlngs.length - 1)));
+  const nextIndex = Math.min(latlngs.length - 1, index + 1);
+  const local = progress * (latlngs.length - 1) - index;
+  const current = [
+    latlngs[index][0] + (latlngs[nextIndex][0] - latlngs[index][0]) * local,
+    latlngs[index][1] + (latlngs[nextIndex][1] - latlngs[index][1]) * local,
+  ];
+  return latlngs.slice(0, index + 1).concat([current]);
 }
 
 function hydrateCuteRoute(points) {

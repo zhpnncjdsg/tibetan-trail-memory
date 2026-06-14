@@ -462,20 +462,59 @@ select option {
 .cute-route-shell {
   position: relative;
   overflow: hidden;
-  height: clamp(7.5rem, 22vw, 9.5rem);
-  min-height: 120px;
-  max-height: 160px;
-  border: 1px solid color-mix(in srgb, var(--route-line), transparent 64%);
+  height: clamp(13.75rem, 42vw, 17.5rem);
+  min-height: 220px;
+  max-height: 280px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
-  background: var(--route-card-bg);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  background: #eef1f4;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4),
+    0 18px 36px rgba(0, 0, 0, 0.2);
 }
 
-.cute-route-svg {
+.route-map {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.route-map .leaflet-tile-pane {
+  filter: saturate(0.78) contrast(0.92) brightness(1.04);
+}
+
+.route-map .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.62);
+  color: rgba(35, 45, 52, 0.58);
+  font-size: 0.55rem;
+  line-height: 1.2;
+}
+
+.real-route-marker {
+  display: grid;
+  place-items: center;
+}
+
+.real-route-marker span {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  box-shadow: 0 0.25rem 0.7rem rgba(0, 0, 0, 0.24);
+}
+
+.real-route-marker.start span {
+  background: #4bbd69;
+}
+
+.real-route-marker.end span {
+  background: #d63b25;
 }
 
 .cute-map-base {
@@ -922,11 +961,7 @@ select option {
   }
 
   .cute-route-shell {
-    height: 120px;
-  }
-
-  .route-complete {
-    margin: 0.32rem 0 0.45rem;
+    height: 220px;
   }
 
   .compact-stat-grid div {
