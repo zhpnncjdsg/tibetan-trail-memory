@@ -69,15 +69,15 @@ https://zhpnncjdsg.github.io/tibetan-trail-memory/customers/客户文件夹名/i
 https://zhpnncjdsg.github.io/tibetan-trail-memory/customers/trip-20260614-a8f3c2/index.html
 ```
 
-## 创建 GitHub Fine-grained Token
+## 小白操作说明
+
+### 第一步：创建 GitHub Fine-grained Token
 
 GitHub 官方文档：
 
 ```text
 https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
 ```
-
-创建步骤：
 
 1. 打开 GitHub。
 2. 点击右上角头像。
@@ -93,34 +93,39 @@ https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/m
    ```
 
 9. Expiration 建议选择一个明确日期，例如 90 天或 180 天。
-10. Resource owner 选择：
+
+### 第二步：Token 只选择当前仓库
+
+1. Resource owner 选择：
 
    ```text
    zhpnncjdsg
    ```
 
-11. Repository access 选择：
+2. Repository access 选择：
 
    ```text
    Only select repositories
    ```
 
-12. Selected repositories 只选择：
+3. Selected repositories 只选择：
 
    ```text
    tibetan-trail-memory
    ```
 
-13. Permissions 里只设置：
+### 第三步：权限只开 Contents: Read and Write
+
+1. 找到 `Repository permissions`。
+2. 只设置：
 
    ```text
-   Repository permissions
    Contents: Read and Write
    ```
 
-14. 其他权限保持默认，不要额外打开。
-15. 点击生成 token。
-16. 复制 token，粘贴到 `admin.html` 的 Token 输入框。
+3. 其他权限保持默认，不要额外打开。
+4. 点击生成 token。
+5. 复制 token。
 
 注意：
 
@@ -129,7 +134,7 @@ https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/m
 - Token 不会提交到 GitHub 仓库。
 - 如果换电脑或换浏览器，需要重新粘贴一次 token。
 
-## 接单后怎么操作
+### 第四步：粘贴 Token
 
 1. 打开：
 
@@ -137,10 +142,38 @@ https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/m
    https://zhpnncjdsg.github.io/tibetan-trail-memory/admin.html
    ```
 
-2. 上传客户照片，多张。
-3. 上传客户视频，可选。
-4. 上传 GPX 轨迹文件，可选。
-5. 填写：
+2. 在 `GitHub Fine-grained Token` 输入框里粘贴 token。
+3. Owner、Repo、Branch、Pages 地址默认不用改。
+
+### 第五步：点击连接测试
+
+1. 点击：
+
+   ```text
+   连接测试
+   ```
+
+2. 正常结果应该类似：
+
+   ```text
+   ✅ Token已填写
+   ✅ Token有效
+   ✅ GitHub API连接成功
+   ✅ 仓库存在
+   ✅ Contents读取正常
+   ✅ Contents: Read and Write 权限正常
+   ✅ 能创建测试文件
+   ✅ Pages已开启
+   ```
+
+3. 如果看到 ❌，按页面显示的具体错误修改 token 或权限。
+
+### 第六步：上传照片、视频、GPX
+
+1. 上传客户照片，多张。
+2. 上传客户视频，可选。
+3. 上传 GPX 轨迹文件，可选。
+4. 填写：
 
    - 客户名称
    - 页面标题
@@ -155,30 +188,29 @@ https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/m
    - 页面风格
    - 定制说明
 
-6. 填写 GitHub Token。
-7. 第一次使用时，先点击：
+### 第七步：生成并发布
 
-   ```text
-   连接测试
-   ```
-
-   它会自动检查：
-
-   - Token 是否有效
-   - 仓库是否存在
-   - 是否能读取当前分支
-   - 是否能通过 GitHub Contents API 写入测试文件
-
-8. 测试通过后点击：
+1. 点击：
 
    ```text
    生成并发布
    ```
 
-9. 等待上传完成。
-10. 页面会显示最终客户链接。
-11. 点击“复制链接”。
-12. 把链接写入 NFC 芯片。
+2. 等待上传完成。
+3. 成功后页面会显示最终客户链接。
+4. 点击 `打开客户页` 可以预览。
+5. 点击 `复制链接` 可以复制最终网址。
+
+如果失败，页面会显示具体错误原因，不会只显示“失败”。
+
+### 第八步：把最终链接写入 NFC 芯片
+
+1. 复制生成出来的客户链接。
+2. 打开你的 NFC 写入工具。
+3. 选择写入 URL/网址。
+4. 粘贴客户链接。
+5. 写入 NFC 芯片。
+6. 用手机贴一下 NFC 测试是否能打开客户页面。
 
 ## 自动生成的路径
 

@@ -69,7 +69,7 @@ function setupAdmin(form) {
     const token = tokenInput?.value.trim();
 
     if (!token) {
-      alert("请先填写 GitHub Fine-grained Token。");
+      showPublishError("Token为空：请先填写 GitHub Fine-grained Token。");
       return;
     }
 
@@ -86,7 +86,7 @@ function setupAdmin(form) {
       restoreGitHubSettings();
     } catch (error) {
       console.error(error);
-      alert(`发布失败：${error.message || error}`);
+      showPublishError(error.message || String(error));
     } finally {
       setPublishState(button, false, "生成并发布");
     }
@@ -319,6 +319,27 @@ function showGeneratedResult(result, publishResult) {
   copy.onclick = async () => {
     await navigator.clipboard.writeText(publishResult.url);
     copy.textContent = "已复制";
+    window.setTimeout(() => (copy.textContent = "复制链接"), 1400);
+  };
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showPublishError(message) {
+  const panel = document.querySelector("#resultPanel");
+  const text = document.querySelector("#resultText");
+  const files = document.querySelector("#resultFiles");
+  const preview = document.querySelector("#previewLink");
+  const copy = document.querySelector("#copyPath");
+
+  if (!panel || !text || !files || !preview || !copy) return;
+
+  panel.hidden = false;
+  text.textContent = "客户页面发布失败";
+  files.textContent = `❌ 具体错误：\n${message}`;
+  preview.removeAttribute("href");
+  copy.onclick = async () => {
+    await navigator.clipboard.writeText(message);
+    copy.textContent = "错误已复制";
     window.setTimeout(() => (copy.textContent = "复制链接"), 1400);
   };
   panel.scrollIntoView({ behavior: "smooth", block: "start" });
