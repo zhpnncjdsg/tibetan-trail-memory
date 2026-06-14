@@ -32,6 +32,11 @@ const GITHUB_CONFIG = {
   pagesBase: "https://zhpnncjdsg.github.io/tibetan-trail-memory",
 };
 
+const IMAGE_MAX_WIDTH = 1920;
+const IMAGE_QUALITY = 0.8;
+const MAX_VIDEO_SIZE = 25 * 1024 * 1024;
+const MAX_GITHUB_MEDIA_FILE_SIZE = 25 * 1024 * 1024;
+
 document.addEventListener("DOMContentLoaded", () => {
   const adminForm = document.querySelector("#adminForm");
   const customerApp = document.querySelector("#customerApp");
@@ -78,6 +83,7 @@ function setupAdmin(form) {
 
     try {
       state.generated = await buildCustomerPackage(form);
+      showUploadEstimate(state.generated);
       setPublishState(button, true, "正在上传到 GitHub...");
       const publishResult = await publishToGitHub(state.generated, token, getGitHubConfig());
       showGeneratedResult(state.generated, publishResult);
@@ -103,6 +109,31 @@ async function buildCustomerPackage(form) {
   const slug = makeTripSlug(date);
   const base = `customers/${slug}`;
   const compressedPhotos = await Promise.all(Array.from(photos).map(compressImageFile));
+  const oversizedVideos = Array.from(videos).filter((file) => file.size > MAX_VIDEO_SIZE);
+
+  if (oversizedVideos.length) {
+    throw new Error(
+      [
+        "视频过大，请压缩后上传。",
+        "",
+        "超过 25MB 的视频：",
+        ...oversizedVideos.map((file, index) => `${safeFileName(file.name, `video-${index + 1}.mp4`)}：${formatBytes(file.size)}`),
+      ].join("\n")
+    );
+  }
+
+  const oversizedPhotos = compressedPhotos.filter((file) => file.blob.size > MAX_GITHUB_MEDIA_FILE_SIZE);
+  if (oversizedPhotos.length) {
+    throw new Error(
+      [
+        "照片已自动压缩，但仍有文件过大。",
+        "建议减少照片数量，或减少单张超大照片后重新生成。",
+        "",
+        "压缩后仍超过限制的照片：",
+        ...oversizedPhotos.map((file) => `${file.name}：${formatBytes(file.blob.size)}`),
+      ].join("\n")
+    );
+  }
 
   const photoItems = compressedPhotos.map((file, index) => ({
     src: `photos/${file.name}`,
@@ -134,21 +165,34 @@ async function buildCustomerPackage(form) {
   };
 
   const files = [
-    { path: `${base}/index.html`, blob: new Blob([CUSTOMER_TEMPLATE], { type: "text/html" }) },
+    { path: `${base}/index.html`, blob: new Blob([CUSTOMER_TEMPLATE], { type: "text/html" }), kind: "page" },
     {
       path: `${base}/data.json`,
       blob: new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+      kind: "data",
     },
   ];
 
-  if (gpx) files.push({ path: `${base}/route.gpx`, blob: gpx });
+  if (gpx) files.push({ path: `${base}/route.gpx`, blob: gpx, kind: "route" });
 
   compressedPhotos.forEach((file, index) => {
-    files.push({ path: `${base}/${photoItems[index].src}`, blob: file.blob });
+    files.push({
+      path: `${base}/${photoItems[index].src}`,
+      blob: file.blob,
+      kind: "photo",
+      originalName: file.originalName,
+      originalSize: file.originalSize,
+    });
   });
 
   Array.from(videos).forEach((file, index) => {
-    files.push({ path: `${base}/${videoItems[index].src}`, blob: file });
+    files.push({
+      path: `${base}/${videoItems[index].src}`,
+      blob: file,
+      kind: "video",
+      originalName: file.name,
+      originalSize: file.size,
+    });
   });
 
   return {
@@ -163,7 +207,11 @@ async function buildCustomerPackage(form) {
 async function publishToGitHub(result, token, config) {
   for (let index = 0; index < result.files.length; index += 1) {
     const file = result.files[index];
-    await uploadFileWithContentsApi(file, token, config, `Add ${result.slug}: ${file.path}`);
+    try {
+      await uploadFileWithContentsApi(file, token, config, `Add ${result.slug}: ${file.path}`);
+    } catch (error) {
+      throw enrichUploadError(error, file, index + 1, result.files.length);
+    }
   }
 
   return {
@@ -298,6 +346,68 @@ function formatGitHubError(result) {
   return `HTTP ${result.status} ${message}${documentation}`;
 }
 
+function enrichUploadError(error, file, index, total) {
+  const rawMessage = error.message || String(error);
+  const lines = [
+    `上传失败：第 ${index}/${total} 个文件`,
+    `文件：${file.path}`,
+    `大小：${formatBytes(file.blob.size)}`,
+  ];
+
+  if (file.originalName) lines.push(`原始文件：${file.originalName}`);
+  if (file.originalSize && file.originalSize !== file.blob.size) {
+    lines.push(`原始大小：${formatBytes(file.originalSize)}`);
+  }
+
+  if (rawMessage.includes("GitHub API 422")) {
+    lines.push("");
+    lines.push("GitHub API 422：这个文件太大，GitHub Contents API 无法处理。");
+    lines.push("请优先检查上面显示的具体文件。");
+    if (file.kind === "photo") lines.push("照片已自动压缩；如果仍失败，建议减少照片数量。");
+    if (file.kind === "video") lines.push("视频文件不自动压缩；超过 25MB 会在发布前拦截。");
+  }
+
+  lines.push("");
+  lines.push("原始错误：");
+  lines.push(rawMessage);
+  return new Error(lines.join("\n"));
+}
+
+function getUploadStats(result) {
+  const photoBytes = result.files
+    .filter((file) => file.kind === "photo")
+    .reduce((sum, file) => sum + file.blob.size, 0);
+  const videoBytes = result.files
+    .filter((file) => file.kind === "video")
+    .reduce((sum, file) => sum + file.blob.size, 0);
+  const totalBytes = result.files.reduce((sum, file) => sum + file.blob.size, 0);
+  return { photoBytes, videoBytes, totalBytes };
+}
+
+function showUploadEstimate(result) {
+  const panel = document.querySelector("#resultPanel");
+  const text = document.querySelector("#resultText");
+  const files = document.querySelector("#resultFiles");
+  const preview = document.querySelector("#previewLink");
+  const copy = document.querySelector("#copyPath");
+  if (!panel || !text || !files || !preview || !copy) return;
+
+  const stats = getUploadStats(result);
+  panel.hidden = false;
+  text.textContent = "素材已处理，正在发布到 GitHub...";
+  files.textContent = [
+    `照片总大小：${formatBytes(stats.photoBytes)}`,
+    `视频总大小：${formatBytes(stats.videoBytes)}`,
+    `预计上传大小：${formatBytes(stats.totalBytes)}`,
+    "",
+    "待上传文件：",
+    ...result.files.map((file) => `${file.path}  ${formatBytes(file.blob.size)}`),
+  ].join("\n");
+  preview.removeAttribute("href");
+  copy.onclick = null;
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function showGeneratedResult(result, publishResult) {
   const panel = document.querySelector("#resultPanel");
   const text = document.querySelector("#resultText");
@@ -309,11 +419,15 @@ function showGeneratedResult(result, publishResult) {
 
   panel.hidden = false;
   text.textContent = `客户页面已发布：${publishResult.url}`;
+  const stats = getUploadStats(result);
   files.textContent = [
     `客户文件夹：${result.base}/`,
     `上传方式：GitHub Contents API`,
+    `照片总大小：${formatBytes(stats.photoBytes)}`,
+    `视频总大小：${formatBytes(stats.videoBytes)}`,
+    `实际上传大小：${formatBytes(stats.totalBytes)}`,
     "",
-    ...result.files.map((file) => file.path),
+    ...result.files.map((file) => `${file.path}  ${formatBytes(file.blob.size)}`),
   ].join("\n");
   preview.href = publishResult.url;
   copy.onclick = async () => {
@@ -811,21 +925,32 @@ function safeFileName(name, fallback) {
 
 async function compressImageFile(file, index) {
   const bitmap = await createImageBitmap(file);
-  const maxSide = index === 0 ? 1600 : 1400;
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, IMAGE_MAX_WIDTH / bitmap.width);
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d", { alpha: false });
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
   context.drawImage(bitmap, 0, 0, width, height);
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.76));
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", IMAGE_QUALITY));
   bitmap.close?.();
   return {
     name: `photo-${String(index + 1).padStart(2, "0")}.jpg`,
     blob: blob || file,
+    originalName: file.name,
+    originalSize: file.size,
   };
+}
+
+function formatBytes(bytes) {
+  const size = Number(bytes) || 0;
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
 async function blobToBase64(blob) {
