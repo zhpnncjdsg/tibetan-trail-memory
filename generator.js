@@ -482,11 +482,33 @@ function buildCustomerMarkup(data, root) {
     <section class="memory-section-block">
       <div class="section-title">
         <p class="eyebrow">Animated Route</p>
-        <h2>从起点到终点</h2>
+        <h2>从起点走到终点</h2>
       </div>
-      <div id="routeMap" class="route-map"></div>
-      <div class="route-actions">
-        <button id="replayRoute" class="button primary" type="button">重播路线</button>
+      <div class="cute-route-shell">
+        <div id="routeMap" class="route-map"></div>
+        <div class="cute-route-overlay" aria-hidden="true">
+          <svg id="cuteRouteSvg" viewBox="0 0 1000 620" preserveAspectRatio="none">
+            <path id="cuteRouteBase" class="cute-route-base" d="" />
+            <path id="cuteRouteProgress" class="cute-route-progress" d="" />
+          </svg>
+          <div id="routeStartBadge" class="route-badge start-badge">起</div>
+          <div id="routeEndBadge" class="route-badge end-badge">终</div>
+          <div id="routeWalker" class="route-walker">${walkerSvg()}</div>
+          <div id="routeMountain" class="route-mountain">${mountainSvg()}</div>
+        </div>
+        <div class="route-control-panel">
+          <div class="route-status">
+            <span class="play-dot"></span>
+            <span id="routeStatusText">自动播放中...</span>
+          </div>
+          <button id="replayRoute" class="button primary" type="button">重新播放</button>
+        </div>
+      </div>
+      <div class="route-steps" aria-label="路线动画步骤">
+        <div class="is-active"><span>1</span><strong>准备出发</strong></div>
+        <div><span>2</span><strong>旅途中...</strong></div>
+        <div><span>3</span><strong>接近终点</strong></div>
+        <div><span>4</span><strong>到达终点</strong></div>
       </div>
     </section>
 
@@ -547,12 +569,12 @@ function buildVideoSection(data, root) {
 async function setupRouteMap(data, root) {
   const mapEl = document.querySelector("#routeMap");
   if (!mapEl || !data.route) {
-    if (mapEl) mapEl.innerHTML = '<div class="map-empty">没有上传 GPX 轨迹文件</div>';
+    if (mapEl) mapEl.closest(".cute-route-shell").innerHTML = '<div class="map-empty">没有上传 GPX 轨迹文件</div>';
     return;
   }
 
   if (!window.L) {
-    mapEl.innerHTML = '<div class="map-empty">地图组件加载失败，请检查网络</div>';
+    mapEl.closest(".cute-route-shell").innerHTML = '<div class="map-empty">地图组件加载失败，请检查网络</div>';
     return;
   }
 
@@ -568,7 +590,7 @@ async function setupRouteMap(data, root) {
   const points = parseGpx(gpx);
 
   if (points.length < 2) {
-    mapEl.innerHTML = '<div class="map-empty">GPX 轨迹点不足</div>';
+    mapEl.closest(".cute-route-shell").innerHTML = '<div class="map-empty">GPX 轨迹点不足，无法生成动画</div>';
     return;
   }
 
@@ -581,40 +603,108 @@ async function setupRouteMap(data, root) {
 
   const bounds = L.latLngBounds(latlngs);
   map.fitBounds(bounds, { padding: [28, 28] });
-  L.marker(latlngs[0], { title: data.startPoint || "起点" }).addTo(map).bindPopup(data.startPoint || "起点");
-  L.marker(latlngs[latlngs.length - 1], { title: data.endPoint || "终点" }).addTo(map).bindPopup(data.endPoint || "终点");
-
-  L.polyline(latlngs, { color: "#f7b955", weight: 3, opacity: 0.32 }).addTo(map);
-  const animatedLine = L.polyline([], { color: "#ed2638", weight: 5, opacity: 0.95 }).addTo(map);
-  const runner = L.circleMarker(latlngs[0], {
-    radius: 7,
-    color: "#ffffff",
-    weight: 2,
-    fillColor: "#15d7e5",
-    fillOpacity: 1,
-  }).addTo(map);
-
+  L.polyline(latlngs, { color: "#f7b955", weight: 3, opacity: 0.22, dashArray: "6 8" }).addTo(map);
+  const cutePath = createCuteRoutePath(points);
+  hydrateCuteRoute(cutePath);
   const replay = document.querySelector("#replayRoute");
-  const animate = () => animateRoute(latlngs, animatedLine, runner);
+  const animate = () => animateRoute(cutePath);
   replay?.addEventListener("click", animate);
   window.setTimeout(animate, 500);
 }
 
-function animateRoute(latlngs, line, marker) {
-  const duration = 3600;
+function hydrateCuteRoute(points) {
+  const pathData = pointsToSvgPath(points);
+  const base = document.querySelector("#cuteRouteBase");
+  const progress = document.querySelector("#cuteRouteProgress");
+  const walker = document.querySelector("#routeWalker");
+  const mountain = document.querySelector("#routeMountain");
+  const start = document.querySelector("#routeStartBadge");
+  const end = document.querySelector("#routeEndBadge");
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  if (!base || !progress || !walker || !mountain || !start || !end) return;
+  base.setAttribute("d", pathData);
+  progress.setAttribute("d", pathData);
+  base.setAttribute("pathLength", "1");
+  progress.setAttribute("pathLength", "1");
+  progress.style.strokeDasharray = "1";
+  progress.style.strokeDashoffset = "1";
+  placeRouteElement(start, first);
+  placeRouteElement(end, last);
+  placeRouteElement(walker, first);
+  placeRouteElement(mountain, last);
+}
+
+function animateRoute(points) {
+  const progress = document.querySelector("#cuteRouteProgress");
+  const walker = document.querySelector("#routeWalker");
+  const status = document.querySelector("#routeStatusText");
+  const steps = Array.from(document.querySelectorAll(".route-steps > div"));
+  if (!progress || !walker || points.length < 2) return;
+
+  const duration = 20000;
   const start = performance.now();
-  line.setLatLngs([]);
+  progress.style.strokeDasharray = "1";
+  progress.style.strokeDashoffset = "1";
+  if (status) status.textContent = "自动播放中...";
 
   function frame(now) {
-    const progress = Math.min((now - start) / duration, 1);
-    const visible = Math.max(2, Math.floor(progress * latlngs.length));
-    const slice = latlngs.slice(0, visible);
-    line.setLatLngs(slice);
-    marker.setLatLng(slice[slice.length - 1]);
-    if (progress < 1) requestAnimationFrame(frame);
+    const amount = Math.min((now - start) / duration, 1);
+    const point = getPointAtProgress(points, amount);
+    document.querySelector("#cuteRouteProgress").style.strokeDashoffset = String(1 - amount);
+    placeRouteElement(walker, point);
+    setRouteStep(steps, amount);
+    if (amount < 1) {
+      requestAnimationFrame(frame);
+    } else if (status) {
+      status.textContent = "播放完成";
+    }
   }
 
   requestAnimationFrame(frame);
+}
+
+function createCuteRoutePath(points) {
+  const lats = points.map((point) => point.lat);
+  const lons = points.map((point) => point.lon);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+  const latRange = maxLat - minLat || 1;
+  const lonRange = maxLon - minLon || 1;
+
+  return points.map((point) => ({
+    x: 90 + ((point.lon - minLon) / lonRange) * 820,
+    y: 520 - ((point.lat - minLat) / latRange) * 430,
+  }));
+}
+
+function pointsToSvgPath(points) {
+  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+}
+
+function getPointAtProgress(points, progress) {
+  const index = Math.min(points.length - 1, Math.floor(progress * (points.length - 1)));
+  const nextIndex = Math.min(points.length - 1, index + 1);
+  const local = progress * (points.length - 1) - index;
+  const a = points[index];
+  const b = points[nextIndex];
+  return {
+    x: a.x + (b.x - a.x) * local,
+    y: a.y + (b.y - a.y) * local,
+  };
+}
+
+function placeRouteElement(element, point) {
+  element.style.left = `${point.x / 10}%`;
+  element.style.top = `${point.y / 6.2}%`;
+}
+
+function setRouteStep(steps, progress) {
+  const index = Math.min(steps.length - 1, Math.floor(progress * steps.length));
+  steps.forEach((step, stepIndex) => step.classList.toggle("is-active", stepIndex === index));
 }
 
 function parseGpx(gpx) {
@@ -624,6 +714,39 @@ function parseGpx(gpx) {
     lon: Number(node.getAttribute("lon")),
     ele: Number(node.querySelector("ele")?.textContent || 0),
   })).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+}
+
+function walkerSvg() {
+  return `
+    <svg viewBox="0 0 96 120" role="img" aria-label="徒步小人">
+      <ellipse cx="48" cy="110" rx="24" ry="7" fill="rgba(0,0,0,.18)" />
+      <path d="M32 49h33l7 35H25z" fill="#2e6f72" stroke="#3b251c" stroke-width="4" />
+      <path d="M35 84 24 106M60 84l13 22" stroke="#3b251c" stroke-width="8" stroke-linecap="round" />
+      <path d="M30 56 18 72M66 56l14 13" stroke="#3b251c" stroke-width="7" stroke-linecap="round" />
+      <circle cx="49" cy="35" r="18" fill="#ffd29b" stroke="#3b251c" stroke-width="4" />
+      <path d="M25 30c8-21 41-23 51 0-15 6-33 7-51 0z" fill="#d98f37" stroke="#3b251c" stroke-width="4" />
+      <path d="M22 29h54" stroke="#3b251c" stroke-width="5" stroke-linecap="round" />
+      <circle cx="43" cy="36" r="2.5" fill="#3b251c" />
+      <circle cx="55" cy="36" r="2.5" fill="#3b251c" />
+      <path d="M43 45c5 4 11 4 16 0" fill="none" stroke="#3b251c" stroke-width="3" stroke-linecap="round" />
+      <path d="M67 48c10 4 15 13 13 25l-13-5z" fill="#8a5b35" stroke="#3b251c" stroke-width="4" />
+      <path d="M36 50h25v12H36z" fill="#f4b84c" opacity=".9" />
+    </svg>
+  `;
+}
+
+function mountainSvg() {
+  return `
+    <svg viewBox="0 0 120 104" role="img" aria-label="终点山峰">
+      <ellipse cx="61" cy="93" rx="45" ry="8" fill="rgba(0,0,0,.16)" />
+      <path d="M17 88 51 26l34 62z" fill="#7bbf8a" stroke="#244b3c" stroke-width="5" />
+      <path d="M44 39 51 26l8 15-7 8z" fill="#fff7df" />
+      <path d="M48 88 76 38l28 50z" fill="#5ca371" stroke="#244b3c" stroke-width="5" />
+      <path d="M70 48 76 38l7 12-7 8z" fill="#fff7df" />
+      <path d="M74 26v-18" stroke="#593225" stroke-width="5" stroke-linecap="round" />
+      <path d="M76 10h25l-4 8 4 8H76z" fill="#e22739" />
+    </svg>
+  `;
 }
 
 function value(formData, key) {
