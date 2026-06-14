@@ -49,12 +49,8 @@ function setupAdmin(form) {
   document.querySelector("#testConnection")?.addEventListener("click", async () => {
     const button = document.querySelector("#testConnection");
     const token = tokenInput?.value.trim();
-    if (!token) {
-      alert("请先填写 GitHub Fine-grained Token。");
-      return;
-    }
 
-    persistGitHubSettings(token);
+    if (token) persistGitHubSettings(token);
     setPublishState(button, true, "正在测试...");
     try {
       const result = await testGitHubConnection(token, getGitHubConfig());
@@ -193,6 +189,25 @@ async function uploadFileWithContentsApi(file, token, config, message) {
   });
 }
 
+async function uploadFileWithContentsApiDetailed(file, token, config, message) {
+  const content = await blobToBase64(file.blob);
+  const path = encodeGitHubPath(file.path);
+  const existingSha = await getContentShaDetailed(file.path, token, config);
+  if (!existingSha.ok) return existingSha;
+
+  const body = {
+    message,
+    content,
+    branch: config.branch,
+  };
+  if (existingSha.sha) body.sha = existingSha.sha;
+
+  return githubRequestDetailed(`repos/${config.owner}/${config.repo}/contents/${path}`, token, {
+    method: "PUT",
+    body,
+  });
+}
+
 async function getContentSha(path, token, config) {
   const encoded = encodeGitHubPath(path);
   try {
@@ -205,6 +220,17 @@ async function getContentSha(path, token, config) {
     if (String(error.message || "").includes("GitHub API 404")) return "";
     throw error;
   }
+}
+
+async function getContentShaDetailed(path, token, config) {
+  const encoded = encodeGitHubPath(path);
+  const result = await githubRequestDetailed(
+    `repos/${config.owner}/${config.repo}/contents/${encoded}?ref=${encodeURIComponent(config.branch)}`,
+    token
+  );
+  if (result.ok) return { ok: true, sha: result.data.sha };
+  if (result.status === 404) return { ok: true, sha: "" };
+  return result;
 }
 
 async function githubRequest(path, token, options = {}) {
@@ -225,6 +251,51 @@ async function githubRequest(path, token, options = {}) {
   }
 
   return response.status === 204 ? null : response.json();
+}
+
+async function githubRequestDetailed(path, token, options = {}) {
+  try {
+    const response = await fetch(`https://api.github.com/${path}`, {
+      method: options.method || "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+
+    const text = await response.text();
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = text;
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      statusText: "Network Error",
+      data: {
+        message: error.message || String(error),
+      },
+    };
+  }
+}
+
+function formatGitHubError(result) {
+  const message = result.data?.message || result.statusText || "未知错误";
+  const documentation = result.data?.documentation_url ? ` (${result.data.documentation_url})` : "";
+  return `HTTP ${result.status} ${message}${documentation}`;
 }
 
 function showGeneratedResult(result, publishResult) {
@@ -255,25 +326,73 @@ function showGeneratedResult(result, publishResult) {
 
 async function testGitHubConnection(token, config) {
   const result = [];
-  const user = await githubRequest("user", token);
-  result.push(`Token 有效：${user.login}`);
 
-  const repo = await githubRequest(`repos/${config.owner}/${config.repo}`, token);
-  result.push(`仓库存在：${repo.full_name}`);
+  if (!token) {
+    result.push("❌ Token为空：请先粘贴 GitHub Fine-grained Token");
+    return result;
+  }
+  result.push("✅ Token已填写");
 
-  await githubRequest(`repos/${config.owner}/${config.repo}/contents/README.md?ref=${encodeURIComponent(config.branch)}`, token);
-  result.push(`读取权限正常：${config.branch} 分支可读取`);
+  const userCheck = await githubRequestDetailed("user", token);
+  if (!userCheck.ok) {
+    result.push(`❌ Token无效：${formatGitHubError(userCheck)}`);
+    result.push("⏭ 后续检测已跳过");
+    return result;
+  }
+  result.push(`✅ Token有效：${userCheck.data.login}`);
+  result.push("✅ GitHub API连接成功");
 
-  const testPath = `customers/_connection-test.txt`;
+  const repoCheck = await githubRequestDetailed(`repos/${config.owner}/${config.repo}`, token);
+  if (!repoCheck.ok) {
+    result.push(`❌ 仓库不存在或无权访问：${formatGitHubError(repoCheck)}`);
+    result.push(`   检查 owner/repo：${config.owner}/${config.repo}`);
+    result.push("⏭ 写入权限和 Pages 检测已跳过");
+    return result;
+  }
+  result.push(`✅ 仓库存在：${repoCheck.data.full_name}`);
+
+  const readCheck = await githubRequestDetailed(
+    `repos/${config.owner}/${config.repo}/contents/README.md?ref=${encodeURIComponent(config.branch)}`,
+    token
+  );
+  if (!readCheck.ok) {
+    result.push(`❌ Contents读取失败：${formatGitHubError(readCheck)}`);
+  } else {
+    result.push(`✅ Contents读取正常：${config.branch} 分支可读取`);
+  }
+
+  const testPath = "customers/_connection-test.txt";
   const testFile = {
     path: testPath,
     blob: new Blob([`connection ok ${new Date().toISOString()}\n`], { type: "text/plain" }),
   };
-  await uploadFileWithContentsApi(testFile, token, config, "Connection test from admin page");
-  result.push(`写入权限正常：已创建/更新 ${testPath}`);
+  const writeCheck = await uploadFileWithContentsApiDetailed(
+    testFile,
+    token,
+    config,
+    "Connection test from admin page"
+  );
 
-  const pagesUrl = `${config.pagesBase}/customers/_connection-test.txt`;
-  result.push(`Pages 测试文件地址：${pagesUrl}`);
+  if (!writeCheck.ok) {
+    result.push(`❌ 权限不足或写入失败：${formatGitHubError(writeCheck)}`);
+    result.push("   请确认 Fine-grained Token 对当前仓库开启 Contents: Read and Write");
+  } else {
+    result.push(`✅ Contents: Read and Write 权限正常`);
+    result.push(`✅ 能创建测试文件：${testPath}`);
+  }
+
+  const pagesCheck = await githubRequestDetailed(`repos/${config.owner}/${config.repo}/pages`, token);
+  if (!pagesCheck.ok) {
+    result.push(`❌ Pages未开启或无权读取：${formatGitHubError(pagesCheck)}`);
+  } else {
+    result.push(`✅ Pages已开启：${pagesCheck.data.html_url || config.pagesBase}`);
+    result.push(`   Pages状态：${pagesCheck.data.status || "unknown"}`);
+  }
+
+  if (writeCheck.ok) {
+    result.push(`🔗 测试文件Pages地址：${config.pagesBase}/customers/_connection-test.txt`);
+  }
+
   return result;
 }
 
