@@ -1,0 +1,23 @@
+{
+  "customerName": "李飘飘",
+  "title": "九岭尖",
+  "subtitle": "",
+  "location": "九岭尖",
+  "date": "2026-05-31",
+  "startPoint": "收到",
+  "endPoint": "叔叔叔叔",
+  "distance": "16.13KM",
+  "maxElevation": "1804m",
+  "elevationGain": "1264m",
+  "style": "earth-gold",
+  "note": "",
+  "route": "route.gpx",
+  "photos": [
+    {
+      "src": "photos/photo-01.jpg",
+      "alt": "九岭尖 照片 1",
+      "cover": true
+    }
+  ],
+  "videos": []
+}
