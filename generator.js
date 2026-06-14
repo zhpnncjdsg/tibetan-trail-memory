@@ -24,6 +24,13 @@ const state = {
   generated: null,
 };
 
+const GITHUB_CONFIG = {
+  owner: "zhpnncjdsg",
+  repo: "tibetan-trail-memory",
+  branch: "main",
+  pagesBase: "https://zhpnncjdsg.github.io/tibetan-trail-memory",
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   const adminForm = document.querySelector("#adminForm");
   const customerApp = document.querySelector("#customerApp");
@@ -33,28 +40,36 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function setupAdmin(form) {
+  const tokenInput = document.querySelector("#githubToken");
+  const savedToken = window.localStorage.getItem("memoryGeneratorGithubToken");
+  if (tokenInput && savedToken) tokenInput.value = savedToken;
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    state.generated = await buildCustomerPackage(form);
-    showGeneratedResult(state.generated);
-  });
+    const button = document.querySelector("#publishButton");
+    const token = tokenInput?.value.trim();
 
-  document.querySelector("#downloadZip")?.addEventListener("click", async () => {
-    if (!state.generated) state.generated = await buildCustomerPackage(form);
-    const blob = await createZip(state.generated.files);
-    downloadBlob(blob, `${state.generated.slug}.zip`);
-  });
-
-  document.querySelector("#saveFolder")?.addEventListener("click", async () => {
-    if (!window.showDirectoryPicker) {
-      alert("当前浏览器不支持直接写入文件夹。请使用 Chrome 或 Edge，或点击下载 ZIP。");
+    if (!token) {
+      alert("请先填写 GitHub Fine-grained Token。");
       return;
     }
 
-    if (!state.generated) state.generated = await buildCustomerPackage(form);
-    const root = await window.showDirectoryPicker();
-    await writeFilesToDirectory(root, state.generated.files);
-    showGeneratedResult(state.generated, "已保存到你选择的本地文件夹。");
+    window.localStorage.setItem("memoryGeneratorGithubToken", token);
+    setPublishState(button, true, "正在生成素材...");
+
+    try {
+      state.generated = await buildCustomerPackage(form);
+      setPublishState(button, true, "正在上传到 GitHub...");
+      const publishResult = await publishToGitHub(state.generated, token);
+      showGeneratedResult(state.generated, publishResult);
+      form.reset();
+      if (tokenInput) tokenInput.value = token;
+    } catch (error) {
+      console.error(error);
+      alert(`发布失败：${error.message || error}`);
+    } finally {
+      setPublishState(button, false, "生成并发布");
+    }
   });
 }
 
@@ -65,7 +80,7 @@ async function buildCustomerPackage(form) {
   const gpx = form.querySelector('[name="gpx"]').files[0];
   const title = value(formData, "title") || "藏地徒步回忆";
   const date = value(formData, "date");
-  const slug = slugify(value(formData, "slug") || `${title}-${date || new Date().getFullYear()}`);
+  const slug = makeTripSlug(date);
   const base = `customers/${slug}`;
   const compressedPhotos = await Promise.all(Array.from(photos).map(compressImageFile));
 
@@ -121,11 +136,90 @@ async function buildCustomerPackage(form) {
     data,
     files,
     slug,
-    previewUrl: `${base}/index.html`,
+    previewUrl: `${GITHUB_CONFIG.pagesBase}/${base}/index.html`,
   };
 }
 
-function showGeneratedResult(result, extraText = "") {
+async function publishToGitHub(result, token) {
+  const refPath = `repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/ref/heads/${GITHUB_CONFIG.branch}`;
+  const ref = await githubRequest(refPath, token);
+  const latestCommitSha = ref.object.sha;
+  const latestCommit = await githubRequest(
+    `repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/commits/${latestCommitSha}`,
+    token
+  );
+
+  const treeItems = [];
+  for (let index = 0; index < result.files.length; index += 1) {
+    const file = result.files[index];
+    const content = await blobToBase64(file.blob);
+    const blob = await githubRequest(`repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/blobs`, token, {
+      method: "POST",
+      body: {
+        content,
+        encoding: "base64",
+      },
+    });
+    treeItems.push({
+      path: file.path,
+      mode: "100644",
+      type: "blob",
+      sha: blob.sha,
+    });
+  }
+
+  const tree = await githubRequest(`repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/trees`, token, {
+    method: "POST",
+    body: {
+      base_tree: latestCommit.tree.sha,
+      tree: treeItems,
+    },
+  });
+
+  const commit = await githubRequest(`repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/commits`, token, {
+    method: "POST",
+    body: {
+      message: `Add customer page ${result.slug}`,
+      tree: tree.sha,
+      parents: [latestCommitSha],
+    },
+  });
+
+  await githubRequest(refPath, token, {
+    method: "PATCH",
+    body: {
+      sha: commit.sha,
+      force: false,
+    },
+  });
+
+  return {
+    commitSha: commit.sha,
+    url: result.previewUrl,
+  };
+}
+
+async function githubRequest(path, token, options = {}) {
+  const response = await fetch(`https://api.github.com/${path}`, {
+    method: options.method || "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`GitHub API ${response.status}: ${text}`);
+  }
+
+  return response.status === 204 ? null : response.json();
+}
+
+function showGeneratedResult(result, publishResult) {
   const panel = document.querySelector("#resultPanel");
   const text = document.querySelector("#resultText");
   const files = document.querySelector("#resultFiles");
@@ -135,13 +229,18 @@ function showGeneratedResult(result, extraText = "") {
   if (!panel || !text || !files || !preview || !copy) return;
 
   panel.hidden = false;
-  text.textContent = `${extraText ? `${extraText} ` : ""}客户页面路径：/${result.base}/index.html`;
-  files.textContent = result.files.map((file) => file.path).join("\n");
-  preview.href = result.previewUrl;
+  text.textContent = `客户页面已发布：${publishResult.url}`;
+  files.textContent = [
+    `客户文件夹：${result.base}/`,
+    `提交版本：${publishResult.commitSha.slice(0, 7)}`,
+    "",
+    ...result.files.map((file) => file.path),
+  ].join("\n");
+  preview.href = publishResult.url;
   copy.onclick = async () => {
-    await navigator.clipboard.writeText(`/${result.base}/index.html`);
+    await navigator.clipboard.writeText(publishResult.url);
     copy.textContent = "已复制";
-    window.setTimeout(() => (copy.textContent = "复制客户路径"), 1400);
+    window.setTimeout(() => (copy.textContent = "复制链接"), 1400);
   };
   panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -350,22 +449,32 @@ function value(formData, key) {
   return String(formData.get(key) || "").trim();
 }
 
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64) || `customer-${Date.now()}`;
+function setPublishState(button, disabled, label) {
+  if (!button) return;
+  button.disabled = disabled;
+  button.textContent = label;
+}
+
+function makeTripSlug(date) {
+  const rawDate = date || new Date().toISOString().slice(0, 10);
+  const safeDate = rawDate.replace(/[^0-9]/g, "") || new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const random = new Uint8Array(3);
+  crypto.getRandomValues(random);
+  const code = Array.from(random, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `trip-${safeDate}-${code}`;
 }
 
 function safeFileName(name, fallback) {
-  const clean = name
+  const extension = (name.match(/\.[a-zA-Z0-9]+$/)?.[0] || fallback.match(/\.[a-zA-Z0-9]+$/)?.[0] || "").toLowerCase();
+  const base = name.replace(/\.[^.]+$/, "");
+  const cleanBase = base
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9._-]/g, "")
-    .replace(/-+/g, "-");
-  return clean || fallback;
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  if (!cleanBase) return fallback;
+  return `${cleanBase}${extension}`;
 }
 
 async function compressImageFile(file, index) {
@@ -385,6 +494,17 @@ async function compressImageFile(file, index) {
     name: `photo-${String(index + 1).padStart(2, "0")}.jpg`,
     blob: blob || file,
   };
+}
+
+async function blobToBase64(blob) {
+  const buffer = await blob.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
 }
 
 function asset(root, path) {

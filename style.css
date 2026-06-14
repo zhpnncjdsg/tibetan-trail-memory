@@ -195,8 +195,24 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(22, 214, 230, 0.12);
 }
 
+input:disabled {
+  color: rgba(248, 241, 231, 0.56);
+  cursor: not-allowed;
+}
+
 select option {
   color: #111;
+}
+
+.help-text {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.68;
 }
 
 .upload-grid {

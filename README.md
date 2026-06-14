@@ -1,87 +1,225 @@
 # 旅行纪念网页生成器
 
-这是一个纯静态的客户旅行纪念网页生成器，适合部署在 GitHub Pages / Cloudflare Pages。
+这是一个部署在 GitHub Pages 上的旅行纪念网页生成器。
 
-## 重要结论
-
-GitHub Pages 只能托管静态文件，不能直接接收上传、不能在服务器上自动创建客户文件夹，也不能保存客户照片/视频/GPX。
-
-所以最简单、免费、适合新手的方案是：
-
-1. 用 `admin.html` 在浏览器本地生成客户页面文件夹。
-2. 把生成的 `customers/客户路径/` 上传或推送到 GitHub。
-3. GitHub Pages 自动生成客户专属网址。
-4. 把这个网址写入 NFC 芯片。
-
-这个方案不需要收费服务，也不需要复杂后端。
-
-## 文件说明
-
-- `admin.html`：管理页面，用来上传素材、填写信息、生成客户网页。
-- `template.html`：客户页面模板。
-- `generator.js`：生成器逻辑和客户页渲染逻辑。
-- `style.css`：管理页和客户页共用样式。
-- `data/sample.json`：示例数据。
-- `data/sample.gpx`：示例 GPX 轨迹。
-- `customers/sample-tibet-2026/`：示例客户页面。
-
-## 以后接单怎么操作
-
-1. 打开 `admin.html`。
-2. 上传客户照片、视频、GPX 文件。
-3. 填写客户名称、标题、日期、地点、起点、终点、距离、海拔等信息。
-4. 点击“生成网页”。
-5. 点击“保存到本地项目文件夹”，选择当前项目根目录。
-6. 生成后会出现类似：
-
-   ```text
-   /customers/kulagangri-2026/index.html
-   ```
-
-7. 把新生成的 `customers/客户路径/` 提交并推送到 GitHub。
-8. 客户网址就是：
-
-   ```text
-   https://zhpnncjdsg.github.io/tibetan-trail-memory/customers/客户路径/
-   ```
-
-9. 把这个网址写入 NFC 芯片。
-
-## 示例页面
-
-本项目自带一个示例客户页面：
+目标流程：
 
 ```text
-customers/sample-tibet-2026/index.html
+上传资料
+填写文字
+点击生成并发布
+自动上传到 GitHub
+得到客户网页链接
+写入 NFC
 ```
 
-上线后对应网址：
+## 在线入口
+
+管理页：
+
+```text
+https://zhpnncjdsg.github.io/tibetan-trail-memory/admin.html
+```
+
+示例客户页：
 
 ```text
 https://zhpnncjdsg.github.io/tibetan-trail-memory/customers/sample-tibet-2026/
 ```
 
+## GitHub Pages 能不能直接保存上传文件？
+
+不能。
+
+GitHub Pages 只能托管静态文件，不能像后台系统一样接收上传并保存文件。
+
+本项目的做法是：
+
+1. `admin.html` 在浏览器里读取你上传的照片、视频、GPX。
+2. 浏览器用你填写的 GitHub Token 调用 GitHub API。
+3. GitHub API 把文件提交到仓库：
+
+   ```text
+   customers/trip-日期-随机编号/
+   ```
+
+4. GitHub Pages 自动把这个文件夹变成客户网页。
+
+这样不需要收费服务，也不需要复杂后端。
+
+## 仓库配置
+
+当前固定使用：
+
+```text
+owner: zhpnncjdsg
+repo: tibetan-trail-memory
+branch: main
+```
+
+客户页面最终地址格式：
+
+```text
+https://zhpnncjdsg.github.io/tibetan-trail-memory/customers/客户文件夹名/index.html
+```
+
+示例：
+
+```text
+https://zhpnncjdsg.github.io/tibetan-trail-memory/customers/trip-20260614-a8f3c2/index.html
+```
+
+## 创建 GitHub Fine-grained Token
+
+GitHub 官方文档：
+
+```text
+https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+```
+
+创建步骤：
+
+1. 打开 GitHub。
+2. 点击右上角头像。
+3. 进入 `Settings`。
+4. 左侧进入 `Developer settings`。
+5. 进入 `Personal access tokens`。
+6. 选择 `Fine-grained tokens`。
+7. 点击 `Generate new token`。
+8. Token name 可填：
+
+   ```text
+   memory-page-generator
+   ```
+
+9. Expiration 建议选择一个明确日期，例如 90 天或 180 天。
+10. Resource owner 选择：
+
+   ```text
+   zhpnncjdsg
+   ```
+
+11. Repository access 选择：
+
+   ```text
+   Only select repositories
+   ```
+
+12. Selected repositories 只选择：
+
+   ```text
+   tibetan-trail-memory
+   ```
+
+13. Permissions 里只设置：
+
+   ```text
+   Repository permissions
+   Contents: Read and Write
+   ```
+
+14. 其他权限保持默认，不要额外打开。
+15. 点击生成 token。
+16. 复制 token，粘贴到 `admin.html` 的 Token 输入框。
+
+注意：
+
+- Token 只会保存在当前浏览器的 `localStorage`。
+- Token 不会写入网页代码。
+- Token 不会提交到 GitHub 仓库。
+- 如果换电脑或换浏览器，需要重新粘贴一次 token。
+
+## 接单后怎么操作
+
+1. 打开：
+
+   ```text
+   https://zhpnncjdsg.github.io/tibetan-trail-memory/admin.html
+   ```
+
+2. 上传客户照片，多张。
+3. 上传客户视频，可选。
+4. 上传 GPX 轨迹文件，可选。
+5. 填写：
+
+   - 客户名称
+   - 页面标题
+   - 副标题
+   - 徒步地点
+   - 徒步日期
+   - 起点
+   - 终点
+   - 徒步距离
+   - 最高海拔
+   - 累计爬升
+   - 页面风格
+   - 定制说明
+
+6. 填写 GitHub Token。
+7. 点击：
+
+   ```text
+   生成并发布
+   ```
+
+8. 等待上传完成。
+9. 页面会显示最终客户链接。
+10. 点击“复制链接”。
+11. 把链接写入 NFC 芯片。
+
+## 自动生成的路径
+
+系统会自动生成安全英文路径，不使用中文路径。
+
+格式：
+
+```text
+customers/trip-YYYYMMDD-随机编号/
+```
+
+例如：
+
+```text
+customers/trip-20260614-a8f3c2/
+```
+
+## 上传到 GitHub 的文件
+
+每个客户会自动上传：
+
+```text
+customers/客户文件夹名/index.html
+customers/客户文件夹名/data.json
+customers/客户文件夹名/route.gpx
+customers/客户文件夹名/assets/photos/photo-01.jpg
+customers/客户文件夹名/assets/photos/photo-02.jpg
+customers/客户文件夹名/assets/videos/...
+```
+
+照片会在浏览器里自动压缩成适合手机网页浏览的 JPEG。
+
+视频不会自动压缩。建议单条视频尽量控制在 50MB 以下；GitHub 不适合放很大的视频文件。
+
 ## 路线动画
 
-客户页使用 Leaflet.js + OpenStreetMap，不使用收费 API。
+客户页使用：
+
+- Leaflet.js
+- OpenStreetMap
+
+不使用收费 API。
 
 支持：
 
-- 读取 GPX 文件
+- 读取 GPX
 - 显示徒步路线
 - 路线从起点逐渐画到终点
 - 小圆点沿路线移动
 - 起点和终点标记
 - 点击按钮重播动画
 
-## 推荐发布方式
-
-当前项目已经使用 GitHub Pages。
-
-如果你想更快、国内访问更稳定，可以以后迁移到 Cloudflare Pages 或国内 OSS/COS。但最少操作版本继续用 GitHub Pages 就可以。
-
 ## 注意事项
 
-- 照片和视频会公开在网页链接中，拿到链接的人都能看。
-- 视频文件不要太大，否则 GitHub Pages 加载会慢。
-- 每个客户一个独立文件夹，方便把不同链接写入不同 NFC 芯片。
+- 这个仓库是公开仓库，客户链接和图片理论上任何拿到链接的人都可以访问。
+- 如果客户照片需要隐私保护，应改用私有存储或带权限的托管方案。
+- GitHub Pages 在国内访问可能偏慢，NFC 可用，但速度取决于网络。

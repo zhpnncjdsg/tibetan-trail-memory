@@ -12,8 +12,8 @@
         <p class="eyebrow">Memory Page Generator</p>
         <h1>客户旅行纪念网页生成器</h1>
         <p>
-          上传照片、视频和 GPX 轨迹，填写徒步信息，一键生成客户独立页面文件夹。
-          生成后的页面链接可以写入 NFC 芯片。
+          上传照片、视频和 GPX 轨迹，填写徒步信息，一键发布到 GitHub Pages。
+          生成后的客户链接可以直接写入 NFC 芯片。
         </p>
       </section>
 
@@ -72,10 +72,6 @@
                 <option value="earth-gold">户外金棕纪念感</option>
               </select>
             </label>
-            <label>
-              <span>客户路径</span>
-              <input name="slug" placeholder="自动生成，例如 kulagangri-2026" />
-            </label>
             <label class="wide">
               <span>定制说明</span>
               <textarea name="note" rows="4" placeholder="写给客人的一段纪念文字"></textarea>
@@ -104,20 +100,49 @@
           </div>
         </section>
 
+        <section class="admin-panel">
+          <div class="panel-head">
+            <span>03</span>
+            <h2>GitHub 发布设置</h2>
+          </div>
+          <div class="form-grid">
+            <label class="wide token-field">
+              <span>GitHub Fine-grained Token</span>
+              <input
+                name="githubToken"
+                id="githubToken"
+                type="password"
+                autocomplete="off"
+                placeholder="只保存在本浏览器 localStorage，不会写入网页代码"
+                required
+              />
+            </label>
+            <label>
+              <span>仓库 Owner</span>
+              <input value="zhpnncjdsg" disabled />
+            </label>
+            <label>
+              <span>仓库 Repo</span>
+              <input value="tibetan-trail-memory" disabled />
+            </label>
+          </div>
+          <p class="help-text">
+            Token 仅保存在当前浏览器，用于调用 GitHub API 提交客户页面文件。权限只需要当前仓库 Contents: Read and Write。
+          </p>
+        </section>
+
         <section class="admin-actions">
-          <button class="button primary" type="submit">生成网页</button>
-          <button class="button ghost" type="button" id="downloadZip">下载客户页面 ZIP</button>
-          <button class="button ghost" type="button" id="saveFolder">保存到本地项目文件夹</button>
+          <button class="button primary" type="submit" id="publishButton">生成并发布</button>
         </section>
       </form>
 
       <section id="resultPanel" class="result-panel" hidden>
-        <p class="eyebrow">Generated</p>
-        <h2>客户页面已生成</h2>
+        <p class="eyebrow">Published</p>
+        <h2>客户页面已发布</h2>
         <p id="resultText"></p>
         <div class="result-actions">
-          <a id="previewLink" class="button primary" target="_blank" rel="noreferrer">预览客户页</a>
-          <button id="copyPath" class="button ghost" type="button">复制客户路径</button>
+          <a id="previewLink" class="button primary" target="_blank" rel="noreferrer">打开客户页</a>
+          <button id="copyPath" class="button ghost" type="button">复制链接</button>
         </div>
         <pre id="resultFiles"></pre>
       </section>
