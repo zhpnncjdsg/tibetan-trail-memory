@@ -1,0 +1,25 @@
+{
+  "customerName": "李飘飘",
+  "title": "雪山",
+  "subtitle": "",
+  "location": "",
+  "date": "",
+  "startPoint": "",
+  "endPoint": "",
+  "distance": "",
+  "maxElevation": "",
+  "elevationGain": "",
+  "theme": "snow-mountain",
+  "style": "snow-mountain",
+  "terrainTheme": "snow",
+  "note": "",
+  "route": "",
+  "photos": [
+    {
+      "src": "photos/photo-01.jpg",
+      "alt": "雪山 照片 1",
+      "cover": true
+    }
+  ],
+  "videos": []
+}
