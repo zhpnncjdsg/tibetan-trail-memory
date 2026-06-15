@@ -308,6 +308,14 @@ select option {
   text-shadow: 0 0 34px var(--title-glow);
 }
 
+.hero-date {
+  margin: -0.2rem 0 1rem;
+  color: var(--gold);
+  font-size: clamp(0.82rem, 2vw, 1rem);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
 .customer-hero p:last-child {
   max-width: 40rem;
   color: var(--ink);
@@ -397,6 +405,7 @@ select option {
 .compact-stat-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
+  margin-top: 0.85rem;
   overflow: hidden;
   border: 1px solid rgba(248, 241, 231, 0.12);
   border-radius: 8px;

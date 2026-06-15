@@ -598,13 +598,12 @@ async function renderCustomerPage(app) {
 function buildCustomerMarkup(data, root) {
   const cover = data.photos?.[0]?.src || "";
   const coverStyle = cover ? ` style="background-image:url('${asset(root, cover)}')"` : "";
+  const heroTitle = data.location || data.title || "藏地徒步回忆";
+  const heroDate = formatCompactDate(data.date);
   const stats = [
-    ["pin", "地点", data.location],
-    ["date", "日期", formatCompactDate(data.date)],
     ["distance", "距离", data.distance],
     ["peak", "最高海拔", data.maxElevation],
     ["up", "累计爬升", data.elevationGain],
-    ["route", "路线", compactRoute(data.startPoint, data.endPoint)],
   ].filter((item) => item[2]);
 
   return `
@@ -612,16 +611,13 @@ function buildCustomerMarkup(data, root) {
       <div class="customer-hero-shade"></div>
       <div class="customer-hero-content">
         <p class="eyebrow">${escapeHtml(data.customerName || "Private Memory")}</p>
-        <h1>${escapeHtml(data.title || "藏地徒步回忆")}</h1>
+        <h1>${escapeHtml(heroTitle)}</h1>
+        ${heroDate ? `<p class="hero-date">${escapeHtml(heroDate)}</p>` : ""}
         <p>${escapeHtml(data.subtitle || "把这一天留给未来慢慢回看。")}</p>
       </div>
     </section>
 
     <section class="memory-section-block journey-overview">
-      <div class="section-title compact-title">
-        <p class="eyebrow">Trail Memory</p>
-        <h2>旅程轨迹</h2>
-      </div>
       <div class="cute-route-shell">
         <div id="routeMap" class="route-map"></div>
       </div>
