@@ -6,7 +6,6 @@ const CUSTOMER_TEMPLATE = `<!doctype html>
     <title>旅行纪念页</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" />
     <link rel="stylesheet" href="../../style.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQAtxT4vW4mID2kMNNjL3M9tnV5tF8A=" crossorigin="" />
   </head>
   <body class="customer-page">
     <main id="customerApp" class="customer-app" data-customer-root=".">
@@ -15,7 +14,6 @@ const CUSTOMER_TEMPLATE = `<!doctype html>
         <h1>正在打开这段旅程</h1>
       </section>
     </main>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="../../generator.js"></script>
   </body>
 </html>
@@ -112,6 +110,7 @@ async function buildCustomerPackage(form, onProgress = () => {}) {
   const title = value(formData, "title") || "藏地徒步回忆";
   const date = value(formData, "date");
   const theme = value(formData, "style") || "tibetan-dark";
+  const terrainTheme = value(formData, "terrainTheme") || "auto";
   const slug = makeTripSlug(date);
   const base = `customers/${slug}`;
   const compressedPhotos = await Promise.all(Array.from(photos).map(compressImageFile));
@@ -161,6 +160,7 @@ async function buildCustomerPackage(form, onProgress = () => {}) {
     elevationGain: value(formData, "elevationGain"),
     theme,
     style: theme,
+    terrainTheme,
     note: value(formData, "note"),
     route: gpx ? "route.gpx" : "",
     photos: photoItems,
@@ -702,8 +702,8 @@ async function setupRouteMap(data, root) {
     return;
   }
 
-  if (!mapEl || !window.L) {
-    shell.replaceWith(createRouteEmpty("地图组件加载失败，请检查网络"));
+  if (!mapEl) {
+    shell.replaceWith(createRouteEmpty("地形容器加载失败"));
     return;
   }
 
@@ -716,8 +716,7 @@ async function setupRouteMap(data, root) {
     return;
   }
 
-  const latlngs = points.map((point) => [point.lat, point.lon]);
-  hydrateLeafletRouteMap(mapEl, latlngs);
+  hydrateTerrainRouteMap(mapEl, points, getTerrainTheme(data));
 }
 
 function createRouteEmpty(message) {
@@ -727,92 +726,150 @@ function createRouteEmpty(message) {
   return element;
 }
 
-function hydrateLeafletRouteMap(mapEl, latlngs) {
-  const map = L.map(mapEl, {
-    attributionControl: true,
-    boxZoom: false,
-    doubleClickZoom: false,
-    dragging: false,
-    keyboard: false,
-    scrollWheelZoom: false,
-    tap: false,
-    touchZoom: false,
-    zoomControl: false,
-  });
-
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: "&copy; OpenStreetMap &copy; CARTO",
-    maxZoom: 18,
-    subdomains: "abcd",
-  }).addTo(map);
-
-  const bounds = L.latLngBounds(latlngs);
-  map.fitBounds(bounds, { padding: [28, 28], animate: false });
-
-  L.polyline(latlngs, {
-    color: "#c7cdd2",
-    opacity: 0.9,
-    weight: 4,
-    lineCap: "round",
-    lineJoin: "round",
-  }).addTo(map);
-
-  const activeLine = L.polyline([], {
-    color: "#d63b25",
-    opacity: 1,
-    weight: 4,
-    lineCap: "round",
-    lineJoin: "round",
-  }).addTo(map);
-
-  const runner = L.circleMarker(latlngs[0], {
-    radius: 5,
-    color: "#ffffff",
-    weight: 2,
-    fillColor: "#d63b25",
-    fillOpacity: 1,
-    interactive: false,
-  }).addTo(map);
-
-  L.marker(latlngs[0], {
-    icon: routeMarkerIcon("起", "start"),
-    interactive: false,
-  }).addTo(map);
-  L.marker(latlngs[latlngs.length - 1], {
-    icon: routeMarkerIcon("终", "end"),
-    interactive: false,
-  }).addTo(map);
-
-  window.setTimeout(() => {
-    map.invalidateSize(false);
-    map.fitBounds(bounds, { padding: [28, 28], animate: false });
-    animateLeafletRoute(latlngs, activeLine, runner);
-  }, 250);
+function getTerrainTheme(data) {
+  if (data.terrainTheme && data.terrainTheme !== "auto") return data.terrainTheme;
+  const theme = data.theme || data.style || "";
+  if (theme.includes("snow")) return "snow";
+  if (theme.includes("desert") || theme.includes("earth")) return "desert";
+  if (theme.includes("grassland")) return "grassland";
+  if (theme.includes("forest")) return "forest";
+  if (theme.includes("island")) return "lake";
+  return "mountain";
 }
 
-function routeMarkerIcon(label, type) {
-  return L.divIcon({
-    className: `real-route-marker ${type}`,
-    html: `<span>${label}</span>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+function hydrateTerrainRouteMap(mapEl, points, terrainTheme) {
+  const terrainPoints = createTerrainRoutePath(points);
+  const pathData = pointsToSvgPath(terrainPoints);
+  mapEl.className = `route-map terrain-map terrain-${terrainTheme}`;
+  mapEl.innerHTML = `
+    <svg class="terrain-svg" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="terrainSky" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="var(--terrain-sky)" />
+          <stop offset="100%" stop-color="var(--terrain-ground)" />
+        </linearGradient>
+        <filter id="terrainSoftShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="rgba(50,55,45,.18)" />
+        </filter>
+      </defs>
+      <rect width="1000" height="360" rx="26" fill="url(#terrainSky)" />
+      ${terrainSvgLayers(terrainTheme)}
+      <path class="terrain-route-shadow" d="${pathData}" />
+      <path id="terrainRouteBase" class="terrain-route-base" d="${pathData}" pathLength="1" />
+      <path id="terrainRouteProgress" class="terrain-route-progress" d="${pathData}" pathLength="1" />
+    </svg>
+    <div id="terrainStart" class="terrain-marker terrain-start">起</div>
+    <div id="terrainEnd" class="terrain-marker terrain-end">终</div>
+    <div id="terrainRunner" class="terrain-runner"></div>
+  `;
+  placeRouteElement(document.querySelector("#terrainStart"), terrainPoints[0]);
+  placeRouteElement(document.querySelector("#terrainEnd"), terrainPoints[terrainPoints.length - 1]);
+  placeRouteElement(document.querySelector("#terrainRunner"), terrainPoints[0]);
+  window.setTimeout(() => animateTerrainRoute(terrainPoints), 300);
+}
+
+function terrainSvgLayers(theme) {
+  const clouds = `
+    <ellipse cx="175" cy="76" rx="48" ry="18" fill="rgba(255,255,255,.42)" />
+    <ellipse cx="222" cy="66" rx="34" ry="14" fill="rgba(255,255,255,.34)" />
+    <ellipse cx="780" cy="82" rx="56" ry="18" fill="rgba(255,255,255,.28)" />
+  `;
+  const trees = `
+    <g class="terrain-trees">
+      <path d="M138 260l18-38 18 38zM156 260v28" />
+      <path d="M820 254l20-42 20 42zM840 254v30" />
+      <path d="M706 284l15-30 15 30zM721 284v22" />
+      <path d="M310 286l14-28 14 28zM324 286v21" />
+    </g>
+  `;
+  const denseForest = Array.from({ length: 18 }, (_, index) => {
+    const x = 70 + index * 52;
+    const y = 252 + (index % 5) * 13;
+    return `<path d="M${x} ${y}l18-38 18 38zM${x + 18} ${y}v28" />`;
+  }).join("");
+
+  if (theme === "snow") {
+    return `${clouds}
+      <path class="terrain-hill far" d="M0 300C160 150 260 210 380 126C520 224 636 110 770 184C858 234 925 198 1000 150V360H0z" />
+      <path class="terrain-snowcap" d="M322 168l58-42 62 72-58-20-34 26zM700 154l70 30 54-34-54 72z" />
+      <path class="terrain-hill near" d="M0 338C120 246 216 316 340 256C500 180 650 292 790 244C900 206 942 246 1000 226V360H0z" />
+      ${trees}`;
+  }
+  if (theme === "desert") {
+    return `<circle cx="850" cy="72" r="38" fill="rgba(255,207,92,.42)" />
+      <path class="terrain-dune far" d="M0 286C140 216 242 270 370 222C520 166 650 262 790 218C902 182 956 218 1000 198V360H0z" />
+      <path class="terrain-dune near" d="M0 330C166 278 292 326 430 286C594 238 710 326 846 278C936 248 970 274 1000 260V360H0z" />
+      <path class="terrain-ridge" d="M120 270C210 246 280 248 380 264M610 260C710 230 805 244 908 262" />`;
+  }
+  if (theme === "grassland") {
+    return `${clouds}
+      <path class="terrain-hill far" d="M0 304C118 238 230 278 350 224C500 158 620 274 768 224C878 186 932 230 1000 204V360H0z" />
+      <path class="terrain-hill near" d="M0 334C160 280 260 318 410 282C560 246 690 318 840 276C935 248 970 270 1000 258V360H0z" />
+      ${trees}`;
+  }
+  if (theme === "forest") {
+    return `${clouds}
+      <path class="terrain-hill far" d="M0 306C138 224 245 274 360 200C506 116 622 264 770 198C872 152 930 208 1000 174V360H0z" />
+      <g class="terrain-forest-dense">${denseForest}</g>
+      <path class="terrain-hill near" d="M0 338C150 292 284 336 426 286C588 230 720 328 868 282C950 256 980 270 1000 260V360H0z" />`;
+  }
+  if (theme === "lake") {
+    return `${clouds}
+      <path class="terrain-hill far" d="M0 300C140 226 236 276 348 226C500 156 632 270 780 222C884 188 934 220 1000 196V360H0z" />
+      <ellipse class="terrain-lake" cx="675" cy="284" rx="176" ry="42" />
+      <path class="terrain-water-line" d="M548 282C604 270 662 272 722 284M590 306C638 298 696 300 744 308" />
+      <path class="terrain-hill near" d="M0 342C138 298 262 330 420 294C520 270 598 320 690 310C800 298 884 272 1000 258V360H0z" />
+      ${trees}`;
+  }
+  return `${clouds}
+    <path class="terrain-hill far" d="M0 306C120 218 230 274 342 190C500 72 628 276 776 176C872 112 932 196 1000 150V360H0z" />
+    <path class="terrain-snowcap" d="M300 214l42-24 40 52-43-18-24 20z" />
+    <path class="terrain-hill mid" d="M0 330C138 246 250 316 388 244C532 168 672 302 812 236C900 194 952 232 1000 214V360H0z" />
+    <path class="terrain-river" d="M0 304C170 280 290 320 420 286S660 254 1000 286" />
+    ${trees}`;
+}
+
+function createTerrainRoutePath(points) {
+  const lats = points.map((point) => point.lat);
+  const lons = points.map((point) => point.lon);
+  const elevations = points.map((point, index) => Number.isFinite(point.ele) && point.ele ? point.ele : 1200 + Math.sin(index / 12) * 260);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+  const minEle = Math.min(...elevations);
+  const maxEle = Math.max(...elevations);
+  const latRange = maxLat - minLat || 1;
+  const lonRange = maxLon - minLon || 1;
+  const eleRange = maxEle - minEle || 1;
+
+  return points.map((point, index) => {
+    const eleLift = ((elevations[index] - minEle) / eleRange) * 52;
+    return {
+      x: 92 + ((point.lon - minLon) / lonRange) * 816,
+      y: 278 - ((point.lat - minLat) / latRange) * 178 - eleLift,
+    };
   });
 }
 
-function animateLeafletRoute(latlngs, line, runner) {
-  const duration = 6500;
-  const hold = 1100;
+function animateTerrainRoute(points) {
+  const progress = document.querySelector("#terrainRouteProgress");
+  const runner = document.querySelector("#terrainRunner");
+  if (!progress || !runner || points.length < 2) return;
+
+  const duration = 6200;
+  const hold = 1000;
 
   function play() {
     const start = performance.now();
-    line.setLatLngs([latlngs[0]]);
-    runner.setLatLng(latlngs[0]);
+    progress.style.strokeDasharray = "1";
+    progress.style.strokeDashoffset = "1";
+    placeRouteElement(runner, points[0]);
 
     function frame(now) {
       const amount = Math.max(0, Math.min((now - start) / duration, 1));
-      const visible = getLatLngsAtProgress(latlngs, amount);
-      line.setLatLngs(visible);
-      runner.setLatLng(visible[visible.length - 1]);
+      progress.style.strokeDashoffset = String(1 - amount);
+      placeRouteElement(runner, getPointAtProgress(points, amount));
       if (amount < 1) {
         requestAnimationFrame(frame);
       } else {
@@ -824,17 +881,6 @@ function animateLeafletRoute(latlngs, line, runner) {
   }
 
   play();
-}
-
-function getLatLngsAtProgress(latlngs, progress) {
-  const index = Math.min(latlngs.length - 1, Math.floor(progress * (latlngs.length - 1)));
-  const nextIndex = Math.min(latlngs.length - 1, index + 1);
-  const local = progress * (latlngs.length - 1) - index;
-  const current = [
-    latlngs[index][0] + (latlngs[nextIndex][0] - latlngs[index][0]) * local,
-    latlngs[index][1] + (latlngs[nextIndex][1] - latlngs[index][1]) * local,
-  ];
-  return latlngs.slice(0, index + 1).concat([current]);
 }
 
 function hydrateCuteRoute(points) {
@@ -929,7 +975,7 @@ function getPointAtProgress(points, progress) {
 
 function placeRouteElement(element, point) {
   element.style.left = `${point.x / 10}%`;
-  element.style.top = `${point.y / 2.2}%`;
+  element.style.top = `${point.y / 3.6}%`;
 }
 
 function parseGpx(gpx) {

@@ -462,12 +462,12 @@ select option {
 .cute-route-shell {
   position: relative;
   overflow: hidden;
-  height: clamp(13.75rem, 42vw, 17.5rem);
-  min-height: 220px;
+  height: clamp(16rem, 48vw, 17.5rem);
+  min-height: 260px;
   max-height: 280px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 72%);
   border-radius: 8px;
-  background: #eef1f4;
+  background: var(--route-card-bg);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.4),
     0 18px 36px rgba(0, 0, 0, 0.2);
@@ -480,23 +480,113 @@ select option {
   height: 100%;
 }
 
-.route-map .leaflet-tile-pane {
-  filter: saturate(0.78) contrast(0.92) brightness(1.04);
+.terrain-map {
+  --terrain-sky: #cfe8d8;
+  --terrain-ground: #b9dc91;
 }
 
-.route-map .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.62);
-  color: rgba(35, 45, 52, 0.58);
-  font-size: 0.55rem;
-  line-height: 1.2;
+.terrain-svg {
+  width: 100%;
+  height: 100%;
 }
 
-.real-route-marker {
-  display: grid;
-  place-items: center;
+.terrain-hill {
+  filter: url(#terrainSoftShadow);
 }
 
-.real-route-marker span {
+.terrain-hill.far {
+  fill: color-mix(in srgb, var(--route-card-tree), white 42%);
+}
+
+.terrain-hill.mid {
+  fill: color-mix(in srgb, var(--route-card-tree), white 24%);
+}
+
+.terrain-hill.near {
+  fill: color-mix(in srgb, var(--route-card-tree), white 12%);
+}
+
+.terrain-dune.far {
+  fill: #e8c277;
+}
+
+.terrain-dune.near {
+  fill: #dca95a;
+}
+
+.terrain-ridge,
+.terrain-water-line {
+  fill: none;
+  stroke: rgba(111, 91, 58, 0.22);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.terrain-river {
+  fill: none;
+  stroke: rgba(87, 173, 206, 0.42);
+  stroke-width: 18;
+  stroke-linecap: round;
+}
+
+.terrain-lake {
+  fill: rgba(83, 184, 214, 0.48);
+}
+
+.terrain-water-line {
+  stroke: rgba(255, 255, 255, 0.42);
+  stroke-width: 4;
+}
+
+.terrain-snowcap {
+  fill: rgba(255, 255, 255, 0.82);
+}
+
+.terrain-trees path,
+.terrain-forest-dense path {
+  fill: color-mix(in srgb, var(--route-label), #5fb36b 42%);
+  stroke: rgba(24, 63, 40, 0.18);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.terrain-route-shadow,
+.terrain-route-base,
+.terrain-route-progress {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.terrain-route-shadow {
+  stroke: rgba(42, 28, 20, 0.2);
+  stroke-width: 9;
+  transform: translateY(5px);
+}
+
+.terrain-route-base {
+  stroke: rgba(255, 255, 255, 0.74);
+  stroke-width: 7;
+  stroke-dasharray: 10 10;
+}
+
+.terrain-route-progress {
+  stroke: #d63b25;
+  stroke-width: 7;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  filter: drop-shadow(0 3px 4px rgba(93, 26, 18, 0.26));
+}
+
+.terrain-marker,
+.terrain-runner {
+  position: absolute;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+}
+
+.terrain-marker {
   width: 1.75rem;
   height: 1.75rem;
   display: grid;
@@ -509,12 +599,46 @@ select option {
   box-shadow: 0 0.25rem 0.7rem rgba(0, 0, 0, 0.24);
 }
 
-.real-route-marker.start span {
+.terrain-start {
   background: #4bbd69;
 }
 
-.real-route-marker.end span {
+.terrain-end {
   background: #d63b25;
+}
+
+.terrain-runner {
+  width: 0.82rem;
+  height: 0.82rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #d63b25;
+  box-shadow: 0 0.25rem 0.7rem rgba(120, 25, 16, 0.35);
+}
+
+.terrain-snow {
+  --terrain-sky: #d9f1fb;
+  --terrain-ground: #d6e7ef;
+}
+
+.terrain-desert {
+  --terrain-sky: #f4d9a2;
+  --terrain-ground: #e5bb69;
+}
+
+.terrain-grassland {
+  --terrain-sky: #ccecc9;
+  --terrain-ground: #98d56d;
+}
+
+.terrain-forest {
+  --terrain-sky: #b9d9bc;
+  --terrain-ground: #6faa67;
+}
+
+.terrain-lake {
+  --terrain-sky: #bfe7ef;
+  --terrain-ground: #9cd0bb;
 }
 
 .cute-map-base {
@@ -961,7 +1085,7 @@ select option {
   }
 
   .cute-route-shell {
-    height: 220px;
+    height: 260px;
   }
 
   .compact-stat-grid div {
