@@ -185,7 +185,7 @@ https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/m
    - 徒步距离
    - 最高海拔
    - 累计爬升
-   - 页面风格
+   - 页面主题：国家地理、雪山、沙漠、草原、森林、高原、湖泊、山地
    - 定制说明
 
 ### 第七步：生成并发布

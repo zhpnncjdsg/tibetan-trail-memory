@@ -9,7 +9,9 @@
   "distance": "16.13KM",
   "maxElevation": "1804m",
   "elevationGain": "1264m",
-  "style": "earth-gold",
+  "pageTheme": "national-geographic",
+  "theme": "national-geographic",
+  "style": "national-geographic",
   "note": "干活干活干活干活发",
   "route": "route.gpx",
   "photos": [

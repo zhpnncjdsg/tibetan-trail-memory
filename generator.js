@@ -109,8 +109,7 @@ async function buildCustomerPackage(form, onProgress = () => {}) {
   const gpx = form.querySelector('[name="gpx"]').files[0];
   const title = value(formData, "title") || "藏地徒步回忆";
   const date = value(formData, "date");
-  const theme = value(formData, "style") || "tibetan-dark";
-  const terrainTheme = value(formData, "terrainTheme") || "auto";
+  const pageTheme = normalizePageTheme(value(formData, "pageTheme") || value(formData, "style") || "national-geographic");
   const slug = makeTripSlug(date);
   const base = `customers/${slug}`;
   const compressedPhotos = await Promise.all(Array.from(photos).map(compressImageFile));
@@ -158,9 +157,9 @@ async function buildCustomerPackage(form, onProgress = () => {}) {
     distance: value(formData, "distance"),
     maxElevation: value(formData, "maxElevation"),
     elevationGain: value(formData, "elevationGain"),
-    theme,
-    style: theme,
-    terrainTheme,
+    pageTheme,
+    theme: pageTheme,
+    style: pageTheme,
     note: value(formData, "note"),
     route: gpx ? "route.gpx" : "",
     photos: photoItems,
@@ -581,7 +580,11 @@ async function renderCustomerPage(app) {
     if (!response.ok) throw new Error("data.json not found");
     const data = await response.json();
     document.title = data.title || "旅行纪念页";
-    app.classList.add(`theme-${data.theme || data.style || "tibetan-dark"}`);
+    const pageTheme = resolvePageTheme(data);
+    document.body.dataset.theme = pageTheme;
+    document.body.classList.add(`theme-${pageTheme}`);
+    app.dataset.theme = pageTheme;
+    app.classList.add(`theme-${pageTheme}`);
     app.innerHTML = buildCustomerMarkup(data, root);
     await setupRouteMap(data, root);
   } catch (error) {
@@ -598,6 +601,13 @@ async function renderCustomerPage(app) {
 function buildCustomerMarkup(data, root) {
   const cover = data.photos?.[0]?.src || "";
   const coverStyle = cover ? ` style="background-image:url('${asset(root, cover)}')"` : "";
+  const compactDate = formatCompactDate(data.date);
+  const heroMeta = [compactDate, data.distance, data.maxElevation].filter(Boolean).join(" · ");
+  const heroStats = [
+    ["ROUTE", data.distance || "—"],
+    ["ELEVATION", data.maxElevation || "—"],
+    ["ASCENT", data.elevationGain || "—"],
+  ];
   const stats = [
     ["pin", "地点", data.location],
     ["date", "日期", formatCompactDate(data.date)],
@@ -610,10 +620,25 @@ function buildCustomerMarkup(data, root) {
   return `
     <section class="customer-hero"${coverStyle}>
       <div class="customer-hero-shade"></div>
+      <div class="hero-frame" aria-hidden="true"></div>
       <div class="customer-hero-content">
-        <p class="eyebrow">${escapeHtml(data.customerName || "Private Memory")}</p>
+        <p class="hero-kicker">EXPEDITION MEMORY</p>
+        <p class="hero-location">${escapeHtml(data.location || data.customerName || "Private Journey")}</p>
         <h1>${escapeHtml(data.title || "藏地徒步回忆")}</h1>
-        <p>${escapeHtml(data.subtitle || "把这一天留给未来慢慢回看。")}</p>
+        <p class="hero-meta">${escapeHtml(heroMeta || "TRAIL ARCHIVE")}</p>
+        <p class="hero-copy">${escapeHtml(data.subtitle || data.note || "山会记得我们来过。")}</p>
+      </div>
+      <div class="hero-core-stats" aria-label="核心旅程数据">
+        ${heroStats
+          .map(
+            ([label, val]) => `
+              <div>
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(val)}</strong>
+              </div>
+            `
+          )
+          .join("")}
       </div>
     </section>
 
@@ -716,7 +741,7 @@ async function setupRouteMap(data, root) {
     return;
   }
 
-  hydrateTerrainRouteMap(mapEl, points, getTerrainTheme(data));
+  hydrateTerrainRouteMap(mapEl, points, resolvePageTheme(data));
 }
 
 function createRouteEmpty(message) {
@@ -726,21 +751,27 @@ function createRouteEmpty(message) {
   return element;
 }
 
-function getTerrainTheme(data) {
-  if (data.terrainTheme && data.terrainTheme !== "auto") return data.terrainTheme;
-  const theme = data.theme || data.style || "";
-  if (theme.includes("snow")) return "snow";
-  if (theme.includes("desert") || theme.includes("earth")) return "desert";
-  if (theme.includes("grassland")) return "grassland";
-  if (theme.includes("forest")) return "forest";
-  if (theme.includes("island")) return "lake";
-  return "mountain";
+function resolvePageTheme(data = {}) {
+  return normalizePageTheme(data.pageTheme || data.theme || data.style || data.terrainTheme || "national-geographic");
 }
 
-function hydrateTerrainRouteMap(mapEl, points, terrainTheme) {
+function normalizePageTheme(theme = "") {
+  const value = String(theme).toLowerCase();
+  if (value.includes("national") || value.includes("geographic") || value === "ng") return "national-geographic";
+  if (value.includes("snow")) return "snow";
+  if (value.includes("desert") || value.includes("earth")) return "desert";
+  if (value.includes("grassland") || value.includes("q-outdoor")) return "grassland";
+  if (value.includes("forest")) return "forest";
+  if (value.includes("plateau") || value.includes("tibetan")) return "plateau";
+  if (value.includes("lake") || value.includes("island")) return "lake";
+  if (value.includes("mountain") || value.includes("black-gold") || value.includes("city")) return "mountain";
+  return "national-geographic";
+}
+
+function hydrateTerrainRouteMap(mapEl, points, pageTheme) {
   const terrainPoints = createTerrainRoutePath(points);
   const pathData = pointsToSvgPath(terrainPoints);
-  mapEl.className = `route-map terrain-map terrain-${terrainTheme}`;
+  mapEl.className = `route-map terrain-map terrain-${pageTheme}`;
   mapEl.innerHTML = `
     <svg class="terrain-svg" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-hidden="true">
       <defs>
@@ -753,7 +784,7 @@ function hydrateTerrainRouteMap(mapEl, points, terrainTheme) {
         </filter>
       </defs>
       <rect width="1000" height="360" rx="26" fill="url(#terrainSky)" />
-      ${terrainSvgLayers(terrainTheme)}
+      ${terrainSvgLayers(pageTheme)}
       <path class="terrain-route-shadow" d="${pathData}" />
       <path id="terrainRouteBase" class="terrain-route-base" d="${pathData}" pathLength="1" />
       <path id="terrainRouteProgress" class="terrain-route-progress" d="${pathData}" pathLength="1" />
@@ -819,6 +850,15 @@ function terrainSvgLayers(theme) {
       <ellipse class="terrain-lake" cx="675" cy="284" rx="176" ry="42" />
       <path class="terrain-water-line" d="M548 282C604 270 662 272 722 284M590 306C638 298 696 300 744 308" />
       <path class="terrain-hill near" d="M0 342C138 298 262 330 420 294C520 270 598 320 690 310C800 298 884 272 1000 258V360H0z" />
+      ${trees}`;
+  }
+  if (theme === "plateau") {
+    return `${clouds}
+      <path d="M88 92c60 22 118 22 178 0s118-22 178 0 118 22 178 0 118-22 178 0" fill="none" stroke="rgba(190,45,54,.38)" stroke-width="5" stroke-linecap="round" stroke-dasharray="16 18" />
+      <path class="terrain-hill far" d="M0 302C116 218 220 250 342 184C500 96 642 252 780 172C878 116 934 196 1000 144V360H0z" />
+      <path class="terrain-snowcap" d="M298 208l48-28 46 58-48-18-28 22zM742 172l42-24 48 52-42-14-26 20z" />
+      <path class="terrain-hill near" d="M0 340C156 270 278 326 422 266C572 204 720 320 870 258C946 228 980 250 1000 238V360H0z" />
+      <path class="terrain-river" d="M0 316C156 292 292 332 430 300S708 270 1000 296" />
       ${trees}`;
   }
   return `${clouds}
