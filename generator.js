@@ -109,6 +109,8 @@ async function buildCustomerPackage(form, onProgress = () => {}) {
   const gpx = form.querySelector('[name="gpx"]').files[0];
   const title = value(formData, "title") || "藏地徒步回忆";
   const date = value(formData, "date");
+  const locationName = value(formData, "locationName") || value(formData, "location");
+  const ascent = value(formData, "ascent") || value(formData, "elevationGain");
   const theme = value(formData, "style") || "tibetan-dark";
   const terrainTheme = value(formData, "terrainTheme") || "auto";
   const slug = makeTripSlug(date);
@@ -151,13 +153,18 @@ async function buildCustomerPackage(form, onProgress = () => {}) {
     customerName: value(formData, "customerName"),
     title,
     subtitle: value(formData, "subtitle"),
-    location: value(formData, "location"),
+    locationName,
+    location: locationName,
     date,
     startPoint: value(formData, "startPoint"),
     endPoint: value(formData, "endPoint"),
     distance: value(formData, "distance"),
     maxElevation: value(formData, "maxElevation"),
-    elevationGain: value(formData, "elevationGain"),
+    ascent,
+    elevationGain: ascent,
+    startTime: value(formData, "startTime"),
+    endTime: value(formData, "endTime"),
+    duration: value(formData, "duration"),
     theme,
     style: theme,
     terrainTheme,
@@ -598,13 +605,25 @@ async function renderCustomerPage(app) {
 function buildCustomerMarkup(data, root) {
   const cover = data.photos?.[0]?.src || "";
   const coverStyle = cover ? ` style="background-image:url('${asset(root, cover)}')"` : "";
-  const heroTitle = data.location || data.title || "藏地徒步回忆";
+  const locationName = data.locationName || data.location;
+  const ascent = data.ascent || data.elevationGain;
+  const heroTitle = locationName || data.title || "藏地徒步回忆";
   const heroDate = formatCompactDate(data.date);
+  const routeText = compactRoute(data.startPoint, data.endPoint) || "";
   const stats = [
+    ["pin", "地点", locationName],
+    ["date", "日期", heroDate],
     ["distance", "距离", data.distance],
     ["peak", "最高海拔", data.maxElevation],
-    ["up", "累计爬升", data.elevationGain],
-  ].filter((item) => item[2]);
+    ["up", "累计爬升", ascent],
+    ["route", "路线", routeText],
+  ];
+  const timeStats = [
+    ["start", "出发时间", data.startTime],
+    ["finish", "结束时间", data.endTime],
+    ["duration", "总用时", data.duration],
+  ].filter((item) => Object.prototype.hasOwnProperty.call(data, { start: "startTime", finish: "endTime", duration: "duration" }[item[0]]) || hasText(item[2]));
+  const allStats = stats.concat(timeStats);
 
   return `
     <section class="customer-hero"${coverStyle}>
@@ -622,13 +641,13 @@ function buildCustomerMarkup(data, root) {
         <div id="routeMap" class="route-map"></div>
       </div>
       <div class="stat-grid compact-stat-grid">
-        ${stats
+        ${allStats
           .map(
             ([icon, label, val]) => `
               <div>
                 <span class="stat-icon">${statIcon(icon)}</span>
                 <span>${escapeHtml(label)}</span>
-                <strong>${escapeHtml(val)}</strong>
+                <strong>${escapeHtml(displayValue(val))}</strong>
               </div>
             `
           )
@@ -664,6 +683,14 @@ function buildCustomerMarkup(data, root) {
       <p>${escapeHtml(data.note || "愿你再次想起这段旅程时，仍然能感到风从山口吹来。")}</p>
     </section>
   `;
+}
+
+function hasText(value) {
+  return typeof value === "string" ? value.trim().length > 0 : Boolean(value);
+}
+
+function displayValue(value) {
+  return hasText(value) ? value : "未填写";
 }
 
 function buildVideoSection(data, root) {
@@ -1336,6 +1363,9 @@ function statIcon(type) {
     peak: "△",
     up: "↟",
     route: "→",
+    start: "◴",
+    finish: "◵",
+    duration: "◷",
   };
   return icons[type] || "•";
 }
