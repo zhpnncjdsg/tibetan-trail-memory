@@ -1,0 +1,140 @@
+{
+  "customerName": "李飘飘",
+  "title": "库拉岗日回忆",
+  "subtitle": "就看到好风景好的",
+  "locationName": "",
+  "location": "",
+  "date": "2026-06-30",
+  "startPoint": "哦哦哦",
+  "endPoint": "啊啊啊",
+  "distance": "16.13KM",
+  "maxElevation": "1804m",
+  "ascent": "",
+  "elevationGain": "",
+  "startTime": "",
+  "endTime": "",
+  "duration": "",
+  "theme": "tibetan-dark",
+  "style": "tibetan-dark",
+  "terrainTheme": "snow",
+  "note": "",
+  "route": "route.gpx",
+  "photos": [
+    {
+      "src": "photos/photo-01.jpg",
+      "alt": "库拉岗日回忆 照片 1",
+      "cover": true
+    },
+    {
+      "src": "photos/photo-02.jpg",
+      "alt": "库拉岗日回忆 照片 2",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-03.jpg",
+      "alt": "库拉岗日回忆 照片 3",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-04.jpg",
+      "alt": "库拉岗日回忆 照片 4",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-05.jpg",
+      "alt": "库拉岗日回忆 照片 5",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-06.jpg",
+      "alt": "库拉岗日回忆 照片 6",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-07.jpg",
+      "alt": "库拉岗日回忆 照片 7",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-08.jpg",
+      "alt": "库拉岗日回忆 照片 8",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-09.jpg",
+      "alt": "库拉岗日回忆 照片 9",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-10.jpg",
+      "alt": "库拉岗日回忆 照片 10",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-11.jpg",
+      "alt": "库拉岗日回忆 照片 11",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-12.jpg",
+      "alt": "库拉岗日回忆 照片 12",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-13.jpg",
+      "alt": "库拉岗日回忆 照片 13",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-14.jpg",
+      "alt": "库拉岗日回忆 照片 14",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-15.jpg",
+      "alt": "库拉岗日回忆 照片 15",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-16.jpg",
+      "alt": "库拉岗日回忆 照片 16",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-17.jpg",
+      "alt": "库拉岗日回忆 照片 17",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-18.jpg",
+      "alt": "库拉岗日回忆 照片 18",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-19.jpg",
+      "alt": "库拉岗日回忆 照片 19",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-20.jpg",
+      "alt": "库拉岗日回忆 照片 20",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-21.jpg",
+      "alt": "库拉岗日回忆 照片 21",
+      "cover": false
+    },
+    {
+      "src": "photos/photo-22.jpg",
+      "alt": "库拉岗日回忆 照片 22",
+      "cover": false
+    }
+  ],
+  "videos": [
+    {
+      "src": "videos/video-01.mp4",
+      "title": "旅程视频 1"
+    }
+  ]
+}
